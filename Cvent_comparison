@@ -1,0 +1,225 @@
+With interest_codes As (
+Select int.id_number
+     , listagg(int.interest_code, ', ') Within Group (Order By int.interest_code ASC) as interest_code
+     , listagg(tint.short_desc, ', ') Within Group (Order By int.interest_code ASC) as short_desc
+from interest int
+Inner Join tms_interest tint
+      On tint.interest_code = int.interest_code
+Group by int.id_number
+),
+
+pref_email As (
+Select id_number
+     , email_address
+     , preferred_ind
+From email
+Where email_status_code = 'A'
+And preferred_ind = 'Y'
+),
+
+non_pref_email As (
+Select id_number
+     , listagg(email_address, ', ') Within Group (Order By email_address ASC) as active_non_pref_emails
+From email
+Where email_status_code = 'A'
+And preferred_ind = 'N'
+Group by id_number
+),
+
+busaddress As (
+Select a.id_number
+     , tms_addr_status.short_desc As address_status
+     , tms_address_type.short_desc As address_type
+     , a.addr_pref_ind
+     , a.company_name_1
+     , a.company_name_2
+     , a.city
+     , a.state_code
+     , a.zipcode
+From address a
+Inner Join tms_addr_status
+    On tms_addr_status.addr_status_code = a.addr_status_code
+Left Join tms_address_type
+    On tms_address_type.addr_type_code = a.addr_type_code
+Left Join tms_country
+    On tms_country.country_code = a.country_code
+Where a.addr_type_code = 'B'
+And a.addr_status_code In ('A','K')
+),
+
+prim_emp AS (
+Select id_number
+     , job_status_code
+     , primary_emp_ind
+     , employer_id_number
+     , employer_name1
+     , employer_name2
+     , job_title
+From employment
+Where job_status_code = 'C'
+And primary_emp_ind = 'Y'
+),
+
+prim_phone As (
+Select id_number
+     , telephone_type_code
+     , telephone_status_code
+     , preferred_ind
+     , country_code
+     , area_code
+     , telephone_number
+From telephone
+Where telephone_status_code = 'A'
+And preferred_ind = 'Y'
+),
+
+prefaddress As (
+Select a.id_number
+     , tms_addr_status.short_desc
+       As address_status
+     , tms_address_type.short_desc
+       As address_type
+     , a.addr_pref_ind
+     , a.company_name_1
+     , a.company_name_2
+     , a.care_of
+     , a.street1
+     , a.street2
+     , a.street3
+     , a.foreign_cityzip
+     , a.city
+     , a.state_code
+     , a.zipcode
+     , tms_country.short_desc
+       As country
+From address a
+Inner Join tms_addr_status
+     On tms_addr_status.addr_status_code = a.addr_status_code
+Left Join tms_address_type
+     On tms_address_type.addr_type_code = a.addr_type_code
+Left Join tms_country
+     On tms_country.country_code = a.country_code
+Where a.addr_pref_ind = 'Y'
+And a.addr_status_code In ('A','K')
+),
+
+HomeAddr As (
+Select a.id_number
+     , tms_addr_status.short_desc As address_status
+     , tms_address_type.short_desc As address_type
+     , a.addr_pref_ind
+     , a.street1
+     , a.street2
+     , a.street3
+     , a.foreign_cityzip
+     , a.city
+     , a.state_code
+     , a.zipcode
+     , tms_country.short_desc As country
+From address a
+Inner Join tms_addr_status
+     On tms_addr_status.addr_status_code = a.addr_status_code
+Left Join tms_address_type
+     On tms_address_type.addr_type_code = a.addr_type_code
+Left Join tms_country
+     On tms_country.country_code = a.country_code
+Where a.addr_status_code In ('A','K')
+And a.addr_type_code = 'H'
+),
+
+BusAddr As (
+Select a.id_number
+     , tms_addr_status.short_desc As address_status
+     , tms_address_type.short_desc As address_type
+     , a.addr_pref_ind
+     , a.street1
+     , a.street2
+     , a.street3
+     , a.foreign_cityzip
+     , a.city
+     , a.state_code
+     , a.zipcode
+     , tms_country.short_desc As country
+From address a
+Inner Join tms_addr_status
+     On tms_addr_status.addr_status_code = a.addr_status_code
+Left Join tms_address_type
+     On tms_address_type.addr_type_code = a.addr_type_code
+Left Join tms_country
+     On tms_country.country_code = a.country_code
+Where a.addr_status_code In ('A','K')
+And a.addr_type_code = 'B'
+)
+
+Select cve.id_number
+     , e.pref_mail_name
+     , e.report_name
+     , e.pref_name_sort
+     , e.first_name
+     , e.last_name
+     , e.record_status_code
+     , e.pref_addr_type_code
+     , inco.interest_code
+     , inco.short_desc
+     , pe.email_address As pref_email
+     , npe.active_non_pref_emails
+     , pe.job_status_code
+     , pe.primary_emp_ind
+     , pe.employer_id_number
+     , premp.report_name AS Employer_Name
+     , pe.employer_name1
+     , pe.employer_name2
+     , pe.job_title
+     , prefemp.city AS Empl_Pref_City
+     , prefemp.state_code AS Empl_Pref_State
+     , pph.telephone_type_code
+     , pph.telephone_status_code
+     , pph.preferred_ind As telephone_pref_ind
+     , pph.country_code As telephone_country_code
+     , pph.area_code As telephone_area_code
+     , pph.telephone_number
+     , hadr.address_status as home_addr_status
+     , hadr.address_type as home_addr_type
+     , hadr.addr_pref_ind as home_pref_ind
+     , hadr.street1 as home_street1
+     , hadr.street2 as home_street2
+     , hadr.street3 as home_street3
+     , hadr.foreign_cityzip as home_foreign_cityzip
+     , hadr.city as home_city
+     , hadr.state_code as home_state_code
+     , hadr.zipcode as home_zip
+     , hadr.country as home_country
+     , badr.address_status as bus_addr_status
+     , badr.address_type as bus_addr_type
+     , badr.addr_pref_ind as bus_pref_ind
+     , badr.street1 as bus_street1
+     , badr.street2 as bus_street2
+     , badr.street3 as bus_street3
+     , badr.foreign_cityzip as bus_foreign_cityzip
+     , badr.city as bus_city
+     , badr.state_code as bus_state_code
+     , badr.zipcode as bus_zip
+     , badr.country as bus_country
+From CVENT_JAN13FY21 cve --temp table containing all current CATracks IDs in Cvent--
+Inner Join entity e
+     On e.id_number = cve.id_number
+Left Join interest_codes inco
+     On e.id_number = inco.id_number
+Left Join pref_email pe
+     On e.id_number = pe.id_number
+Left Join non_pref_email npe
+     On e.id_number = npe.id_number
+Left Join busaddress ba
+    On e.id_number = ba.id_number
+Left Join prim_emp pe
+     On e.id_number = pe.id_number
+Left Join entity premp
+     On pe.employer_id_number = premp.id_number
+Left Join prefaddress prefemp
+     On pe.employer_id_number = prefemp.id_number
+Left Join prim_phone pph
+     On e.id_number = pph.id_number
+Left Join HomeAddr hadr
+     On e.id_number = hadr.id_number
+Left Join BusAddr badr
+     On e.id_number = badr.id_number
