@@ -1,0 +1,120 @@
+With Deans_Fund_FY22 As
+(Select household_id
+      , fiscal_year
+      , sum(legal_amount) As Legal_Amt
+      , sum(hh_recognition_credit) As hh_recognition_credit
+From rpt_pbh634.v_ksm_giving_trans_hh
+Where allocation_code = '3203000970801GFT'
+And fiscal_year = '2022'
+Group By household_id, fiscal_year
+), 
+
+Deans_Fund_FY21 As
+(Select household_id
+      , fiscal_year
+      , sum(legal_amount) As Legal_Amt
+      , sum(hh_recognition_credit) As hh_recognition_credit
+From rpt_pbh634.v_ksm_giving_trans_hh
+Where allocation_code = '3203000970801GFT'
+And fiscal_year = '2021'
+Group By household_id, fiscal_year
+), 
+
+pref_email As (
+Select em.id_number,
+       em.email_address,
+       shc.NO_EMAIL_IND
+    FROM Email em
+    left join rpt_pbh634.v_entity_special_handling SHC
+       on em.id_number = shc.id_number
+    WHERE em.email_status_code = 'A'
+    AND em.preferred_ind = 'Y'
+    AND shc.NO_EMAIL_IND is NULL
+   )
+,
+
+prefaddress As (
+    Select
+      a.id_number
+      , tms_addr_status.short_desc
+        As address_status
+      , tms_address_type.short_desc
+        As address_type
+      , a.addr_pref_ind
+      , a.company_name_1
+      , a.company_name_2
+      , a.care_of
+      , a.street1
+      , a.street2
+      , a.street3
+      , a.foreign_cityzip
+      , a.city
+      , a.state_code
+      , tms_states.short_desc As state
+      , a.zipcode
+      , tms_country.short_desc As country
+    From address a
+    Inner Join tms_addr_status
+      On tms_addr_status.addr_status_code = a.addr_status_code
+    Left Join tms_address_type
+      On tms_address_type.addr_type_code = a.addr_type_code
+    Left Join tms_country
+      On tms_country.country_code = a.country_code
+    Left Join tms_states
+      On tms_states.state_code = a.state_code
+    Where a.addr_pref_ind = 'Y'
+    And a.addr_status_code In ('A','K')
+  )
+,
+
+All_IDs AS (
+SELECT
+  household_id
+FROM Deans_Fund_FY22
+UNION
+SELECT
+  household_id
+FROM Deans_Fund_FY21
+)
+
+Select hh.household_id
+     , hh.HOUSEHOLD_RPT_NAME
+     , e.person_or_org
+     , hh.household_city
+     , hh.household_state
+     , hh.DEGREES_concat
+     , hh.household_ksm_year
+     , hh.household_program
+     , hh.spouse_id_number
+     , hh.SPOUSE_REPORT_NAME
+     , hh.SPOUSE_DEGREES_CONCAT
+     , hh.spouse_first_ksm_year
+     , hh.spouse_program
+     , fy21.hh_recognition_credit As FY21_HH_Rec_Amt
+     , fy22.hh_recognition_credit As FY22_HH_Rec_Amt
+     , pref_email.email_address
+     , sph.special_handling_concat
+     , sph.no_email_ind
+     , sph.no_contact
+     , spspe.email_address As Spouse_email
+     , spssph.special_handling_concat As Spouse_SHC
+     , spssph.no_email_ind As Spouse_No_Email
+     , spssph.no_contact As Spouse_No_Contact
+From rpt_pbh634.v_entity_ksm_households hh
+Inner Join All_IDs
+      On hh.id_number = all_ids.household_id
+Inner Join entity e
+      On hh.id_number = e.id_number
+Left Join Deans_Fund_FY22 fy22
+      On hh.household_id = fy22.household_id
+Left Join Deans_Fund_FY21 fy21
+      On hh.household_id = fy21.household_id
+Left Join table(rpt_pbh634.ksm_pkg.tbl_special_handling_concat) sph
+    On hh.household_id = sph.id_number
+Left Join pref_email
+      On hh.household_id = pref_email.id_number
+Left Join table(rpt_pbh634.ksm_pkg.tbl_special_handling_concat) spssph
+    On hh.spouse_id_number = spssph.id_number
+Left Join pref_email spspe
+      On hh.spouse_id_number = spspe.id_number
+Where e.person_or_org = 'P' 
