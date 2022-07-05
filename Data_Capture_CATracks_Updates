@@ -1,0 +1,360 @@
+With emailupdates As (
+Select Id_number
+     , email_type_code
+     , email_status_code
+     , email_address
+     , Preferred_ind
+     , forwards_to_email_address
+     , status_change_date
+     , original_source_code
+     , change_source_code
+     , change_source_date
+     , date_added
+     , date_modified
+     , operator_name
+     , xcomment
+From email
+Where Email_status_code = 'A'
+And date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And operator_name Not Like 'NUAutoBatch'
+And operator_name Not Like 'WeeklyDataQuality'
+And (original_source_code In ('59', '01')
+Or change_source_code In ('59', '01'))
+--is this the best date?
+),
+
+teleupdates As (
+Select id_number
+     , telephone_type_code
+     , telephone_status_code
+     , status_change_date
+     , area_code
+     , telephone_number
+     , extension
+     , country_code
+     , preferred_ind
+     , start_dt
+     , stop_dt
+     , telephone_modified_date
+     , original_source_code
+     , change_source_code
+     , change_source_date
+     , xcomment
+     , date_added
+     , date_modified
+     , operator_name
+     , user_group
+From telephone
+Where telephone_status_code = 'A'
+And (original_source_code In ('59', '01')
+Or change_source_code In ('59', '01'))
+And date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And operator_name Not Like 'NUAutoBatch'
+And operator_name Not Like 'WeeklyDataQuality'
+--is this the best date?
+),
+
+int_updates As (
+Select int.id_number
+     , int.interest_code
+     , tint.short_desc As Interest
+     , int.start_dt
+     , int.stop_dt
+     , int.comment1
+     , int.date_added
+     , int.operator_name
+     , int.data_source_code
+From interest int
+Inner Join tms_interest tint
+      On int.interest_code = tint.interest_code
+Where int.data_source_code In ('59', '01')
+And int.date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And int.operator_name Not Like 'NUAutoBatch'
+And int.operator_name Not Like 'WeeklyDataQuality'
+--is this the best date?
+),
+
+emp_updates As(
+Select emp.id_number
+     , emp.job_status_code
+     , emp.primary_emp_ind
+     , emp.employer_id_number
+     , emp.employer_name1
+     , emp.employer_name2
+     , emp.job_title
+     , emp.fld_of_work_code
+     , fow.short_desc As Field_Of_Work
+     , emp.fld_of_spec_code1
+     , fos.short_desc As Field_Of_Spec
+     , emp.start_dt
+     , emp.xcomment
+     , emp.date_added
+     , emp.date_modified
+     , emp.operator_name
+     , emp.data_source_code
+     , emp.change_source_code
+From employment emp
+Left Join tms_fld_of_work fow
+      On emp.fld_of_work_code = fow.fld_of_work_code
+Left Join tms_fld_of_spec fos
+      On emp.fld_of_spec_code1 = fos.fld_of_spec_code
+Where job_status_code = 'C'
+And (data_source_code In ('59', '01')
+Or change_source_code In ('59', '01'))
+And date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And operator_name Not Like 'NUAutoBatch'
+And operator_name Not Like 'WeeklyDataQuality'
+--'Data Hygiene' and 'Employer ID Matched...' shouldn't count
+),
+
+addy As (
+Select addy.id_number
+     , addy.start_dt
+     , addy.stop_dt
+     , addy.addr_type_code
+     , addy.addr_status_code
+     , addy.addr_pref_ind
+     , addy.company_name_1
+     , addy.company_name_2
+     , addy.business_title
+     , addy.street1
+     , addy.street2
+     , addy.street3
+     , addy.foreign_cityzip
+     , addy.city
+     , addy.state_code
+     , st.short_desc As State
+     , addy.zipcode
+     , addy.country_code
+     , cc.short_desc As Country
+     , addy.address_mod_date
+     , addy.addr_src_code
+     , addy.change_source_code
+     , addy.line_1
+     , addy.line_2
+     , addy.line_3
+     , addy.line_4
+     , addy.xcomment
+     , addy.date_added
+     , addy.date_modified
+     , addy.operator_name
+From address addy
+Left Join tms_states st
+     On addy.state_code = st.state_code
+Left Join tms_country cc
+     On addy.country_code = cc.country_code
+Where addr_status_code In ('A', 'K')
+And address_mod_date >= to_date('9/1/2021','MM/DD/YYYY')
+And (addr_src_code In ('59', '01')
+Or change_source_code In ('59', '01'))
+And operator_name Not Like 'NUAutoBatch'
+And operator_name Not Like 'WeeklyDataQuality'
+),
+
+undergrad As (
+Select deg.id_number
+     , deg.institution_code
+     , inst.institution_name
+     , deg.degree_type
+     , deg.degree_level_code
+     , tdl.short_desc
+     , deg.degree_year
+     , deg.data_source_code
+     , deg.date_modified
+     , deg.operator_name
+     , deg.xcomment
+From degrees deg
+Left Join institution inst
+      On deg.institution_code = inst.institution_code
+Left Join tms_degree_level tdl
+      On deg.degree_level_code = tdl.degree_level_code
+Where deg.degree_type = 'U'
+And deg.data_source_code In ('59', '01')
+And deg.date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And deg.operator_name Not Like 'NUAutoBatch'
+And deg.operator_name Not Like 'WeeklyDataQuality'
+),
+
+econ As (
+Select econ.id_number
+     , econ.econtact_type_code
+     , tct.short_desc As eContact_Type
+     , econ.econtact_status_code
+     , econ.econtact
+     , econ.start_dt
+     , econ.stop_dt
+     , econ.preferred_ind
+     , econ.status_change_date
+     , econ.original_source_code
+     , econ.change_source_code
+     , econ.change_source_date
+     , econ.xcomment
+     , econ.date_added
+     , econ.date_modified
+     , econ.operator_name
+From econtact econ
+Left Join tms_econtact_type tct
+     On econ.econtact_type_code = tct.econtact_type
+Where econtact_status_code = 'A'
+And econ.date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And (econ.original_source_code In ('59', '01')
+Or econ.change_source_code In ('59', '01'))
+And econ.operator_name Not Like 'NUAutoBatch'
+And econ.operator_name Not Like 'WeeklyDataQuality'
+),
+
+id_merge As (
+Select id_number
+From emailupdates
+Union
+Select id_number
+From teleupdates
+Union
+Select id_number
+From int_updates
+Union
+Select id_number
+From emp_updates
+Union
+Select id_number
+From addy
+Union
+Select id_number
+From undergrad
+Union
+Select id_number
+From econ
+)
+
+Select idm.id_number
+     , e.record_status_code
+     , e.pref_mail_name
+     , e.institutional_suffix
+     , emu.email_type_code
+     , emu.email_status_code
+     , emu.email_address
+     , emu.Preferred_ind As Email_Pref_Ind
+--     , emu.forwards_to_email_address
+--     , emu.status_change_date
+     , emu.original_source_code As Email_Orig_Source_code
+     , emu.change_source_code As Email_Change_Source_code
+--     , emu.change_source_date
+     , emu.date_added As Email_Date_Added
+     , emu.date_modified As Email_Date_Modified
+     , emu.operator_name As Email_Operator_Name
+     , emu.xcomment As Email_Comment
+     , tup.telephone_type_code
+     , tup.telephone_status_code
+--     , tup.status_change_date
+     , tup.area_code
+     , tup.telephone_number
+     , tup.extension As Tele_Extension
+     , tup.country_code
+     , tup.preferred_ind As Tele_Pref_ind
+     , tup.start_dt As Tele_Start_dt
+     , tup.stop_dt As Tele_Stop_dt
+     , tup.telephone_modified_date
+     , tup.original_source_code As Tele_orig_source_code
+     , tup.change_source_code As Tele_change_source_code
+     , tup.change_source_date As Tele_change_source_code
+     , tup.xcomment As Tele_comment
+     , tup.date_added As Tele_date_added
+     , tup.date_modified As Tele_date_modified
+     , tup.operator_name As Tele_operator_name
+--     , tup.user_group
+--     , iup.interest_code
+     , iup.Interest
+     , iup.start_dt As Interest_start_dt
+     , iup.stop_dt As Interest_stop_dt
+     , iup.comment1 As Interest_Comment
+     , iup.date_added As Interest_start_dt
+     , iup.operator_name As Interest_start_dt
+     , iup.data_source_code As Interest_start_dt
+     , empup.job_status_code
+     , empup.primary_emp_ind
+     , empup.employer_id_number
+     , empup.employer_name1
+     , empup.employer_name2
+     , empup.job_title
+--     , empup.fld_of_work_code
+     , empup.Field_Of_Work
+--     , empup.fld_of_spec_code1
+     , empup.Field_Of_Spec
+     , empup.start_dt As Employment_start_dt
+     , empup.xcomment As Employment_Comment
+     , empup.date_added As Employment_date_added
+     , empup.date_modified As Employment_date_modified
+     , empup.operator_name As Employment_operator_name
+     , empup.data_source_code As Employment_data_source_code
+     , empup.change_source_code As Employment_change_source_code
+     , addy.start_dt As Address_start_dt
+     , addy.stop_dt As Address_stop_dt
+     , addy.addr_type_code As Address_type
+     , addy.addr_status_code As Address_status
+     , addy.addr_pref_ind As Address_pref_ind
+     , addy.company_name_1
+     , addy.company_name_2
+     , addy.business_title
+     , addy.street1
+     , addy.street2
+     , addy.street3
+     , addy.foreign_cityzip
+     , addy.city
+--     , addy.state_code
+     , addy.State
+     , addy.zipcode
+--     , addy.country_code
+     , addy.Country
+     , addy.address_mod_date
+     , addy.addr_src_code
+     , addy.change_source_code As Address_change_source_code
+     , addy.line_1 As Address_Line1
+     , addy.line_2 As Address_Line2
+     , addy.line_3 As Address_Line3
+     , addy.line_4 As Address_Line4
+     , addy.xcomment As Address_Comment
+     , addy.date_added As Address_Date_added
+     , addy.date_modified As Address_Date_Modified
+     , addy.operator_name As Address_Operator_Name
+--     , und.institution_code
+     , und.institution_name As Undergrad_School
+     , und.degree_type
+--     , und.degree_level_code
+     , und.short_desc As Undergrad_Degree_Level
+     , und.degree_year
+     , und.data_source_code As Undergrad_date_source_code
+     , und.date_modified As Undergrad_date_modified
+     , und.operator_name As Undergrad_operator_name
+     , und.xcomment As Undergrad_Comment
+--     , econ.econtact_type_code
+     , econ.eContact_Type
+     , econ.econtact_status_code
+     , econ.econtact
+     , econ.start_dt As eContact_start_dt
+     , econ.stop_dt As eContact_stop_dt
+     , econ.preferred_ind As eContact_pref_ind
+     , econ.status_change_date As eContact_status_change_date
+     , econ.original_source_code As eContact_original_source_code
+     , econ.change_source_code As eContact_change_source_code
+     , econ.change_source_date As eContact_change_source_date
+     , econ.xcomment As eContact_Comment
+     , econ.date_added As eContact_date_added
+     , econ.date_modified As eContact_date_modified
+     , econ.operator_name As eContact_operator_name
+From entity e
+Inner Join id_merge idm
+      On e.id_number = idm.id_number
+Left join emailupdates emu
+      On e.id_number = emu.id_number
+Left join teleupdates tup
+      On e.id_number = tup.id_number
+Left join int_updates iup
+      On e.id_number = iup.id_number
+Left join emp_updates empup
+      On e.id_number = empup.id_number
+Left join addy
+      On e.id_number = addy.id_number
+Left join undergrad und
+      On e.id_number = und.id_number
+Left join econ
+      On e.id_number = econ.id_number
