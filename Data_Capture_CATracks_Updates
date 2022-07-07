@@ -15,7 +15,7 @@ Select Id_number
      , xcomment
 From email
 Where Email_status_code = 'A'
-And date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And date_modified >= to_date('9/1/2020','MM/DD/YYYY')
 And operator_name Not Like 'NUAutoBatch'
 And operator_name Not Like 'WeeklyDataQuality'
 And (original_source_code In ('59', '01')
@@ -48,7 +48,7 @@ From telephone
 Where telephone_status_code = 'A'
 And (original_source_code In ('59', '01')
 Or change_source_code In ('59', '01'))
-And date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And date_modified >= to_date('9/1/2020','MM/DD/YYYY')
 And operator_name Not Like 'NUAutoBatch'
 And operator_name Not Like 'WeeklyDataQuality'
 --is this the best date?
@@ -68,7 +68,7 @@ From interest int
 Inner Join tms_interest tint
       On int.interest_code = tint.interest_code
 Where int.data_source_code In ('59', '01')
-And int.date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And int.date_modified >= to_date('9/1/2020','MM/DD/YYYY')
 And int.operator_name Not Like 'NUAutoBatch'
 And int.operator_name Not Like 'WeeklyDataQuality'
 --is this the best date?
@@ -101,7 +101,7 @@ Left Join tms_fld_of_spec fos
 Where job_status_code = 'C'
 And (data_source_code In ('59', '01')
 Or change_source_code In ('59', '01'))
-And date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And date_modified >= to_date('9/1/2020','MM/DD/YYYY')
 And operator_name Not Like 'NUAutoBatch'
 And operator_name Not Like 'WeeklyDataQuality'
 --'Data Hygiene' and 'Employer ID Matched...' shouldn't count
@@ -144,7 +144,7 @@ Left Join tms_states st
 Left Join tms_country cc
      On addy.country_code = cc.country_code
 Where addr_status_code In ('A', 'K')
-And address_mod_date >= to_date('9/1/2021','MM/DD/YYYY')
+And address_mod_date >= to_date('9/1/2020','MM/DD/YYYY')
 And (addr_src_code In ('59', '01')
 Or change_source_code In ('59', '01'))
 And operator_name Not Like 'NUAutoBatch'
@@ -170,7 +170,7 @@ Left Join tms_degree_level tdl
       On deg.degree_level_code = tdl.degree_level_code
 Where deg.degree_type = 'U'
 And deg.data_source_code In ('59', '01')
-And deg.date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And deg.date_modified >= to_date('9/1/2020','MM/DD/YYYY')
 And deg.operator_name Not Like 'NUAutoBatch'
 And deg.operator_name Not Like 'WeeklyDataQuality'
 ),
@@ -196,7 +196,7 @@ From econtact econ
 Left Join tms_econtact_type tct
      On econ.econtact_type_code = tct.econtact_type
 Where econtact_status_code = 'A'
-And econ.date_modified >= to_date('9/1/2021','MM/DD/YYYY')
+And econ.date_modified >= to_date('9/1/2020','MM/DD/YYYY')
 And (econ.original_source_code In ('59', '01')
 Or econ.change_source_code In ('59', '01'))
 And econ.operator_name Not Like 'NUAutoBatch'
@@ -256,7 +256,7 @@ Select idm.id_number
      , tup.telephone_modified_date
      , tup.original_source_code As Tele_orig_source_code
      , tup.change_source_code As Tele_change_source_code
-     , tup.change_source_date As Tele_change_source_code
+     , tup.change_source_date As Tele_change_source_date
      , tup.xcomment As Tele_comment
      , tup.date_added As Tele_date_added
      , tup.date_modified As Tele_date_modified
@@ -267,9 +267,9 @@ Select idm.id_number
      , iup.start_dt As Interest_start_dt
      , iup.stop_dt As Interest_stop_dt
      , iup.comment1 As Interest_Comment
-     , iup.date_added As Interest_start_dt
-     , iup.operator_name As Interest_start_dt
-     , iup.data_source_code As Interest_start_dt
+     , iup.date_added As Interest_dt_added
+     , iup.operator_name As Interest_operator_name
+     , iup.data_source_code As Interest_data_src_code
      , empup.job_status_code
      , empup.primary_emp_ind
      , empup.employer_id_number
