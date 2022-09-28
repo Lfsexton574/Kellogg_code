@@ -153,7 +153,7 @@ And a.addr_type_code = 'B'
 
 LinkedIn As (
 Select econq4.id_number
---     , listagg(econ.econtact_type_code, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact_Type
+--     , listagg(econ.econtact_type_code, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact_Type_code
      , listagg(tmse.short_desc, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact_Type
      , listagg(econ.econtact_status_code, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact_Status
      , listagg(econ.econtact, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact
