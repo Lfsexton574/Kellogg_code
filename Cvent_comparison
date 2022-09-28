@@ -149,6 +149,27 @@ Left Join tms_country
      On tms_country.country_code = a.country_code
 Where a.addr_status_code In ('A','K')
 And a.addr_type_code = 'B'
+),
+
+LinkedIn As (
+Select econq4.id_number
+--     , listagg(econ.econtact_type_code, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact_Type
+     , listagg(tmse.short_desc, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact_Type
+     , listagg(econ.econtact_status_code, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact_Status
+     , listagg(econ.econtact, ', ') Within Group (Order By econ.econtact_type_code ASC) as eContact
+     , listagg(econ.preferred_ind, ', ') Within Group (Order By econ.econtact_type_code ASC) as Preferred_ind
+     , listagg(econ.business_ind, ', ') Within Group (Order By econ.econtact_type_code ASC) as Business_ind
+     , listagg(econ.original_source_code, ', ') Within Group (Order By econ.econtact_type_code ASC) as Orig_source_code
+     , listagg(econ.change_source_code, ', ') Within Group (Order By econ.econtact_type_code ASC) as Change_source_code
+     , listagg(econ.xcomment, ', ') Within Group (Order By econ.econtact_type_code ASC) as xComment
+From econtact econ
+Inner Join CventeConq4FY22 econq4
+      On econq4.id_number = econ.id_number
+Inner Join tms_econtact_type tmse
+      On econ.econtact_type_code = tmse.econtact_type
+Where econ.econtact_status_code = 'A'
+And eContact_Type = 'L'
+Group By econq4.id_number
 )
 
 Select cve.id_number
@@ -161,6 +182,14 @@ Select cve.id_number
      , e.pref_addr_type_code
      , inco.interest_code
      , inco.short_desc
+     , Li.eContact_Type
+     , Li.eContact_Status
+     , Li.eContact
+     , Li.Preferred_ind
+     , Li.Business_ind
+     , Li.Orig_source_code
+     , Li.Change_source_code
+     , Li.xComment
      , pe.email_address As pref_email
      , npe.active_non_pref_emails
      , pe.job_status_code
@@ -223,3 +252,5 @@ Left Join HomeAddr hadr
      On e.id_number = hadr.id_number
 Left Join BusAddr badr
      On e.id_number = badr.id_number
+Left Join LinkedIn Li
+     On e.id_number = li.id_number
