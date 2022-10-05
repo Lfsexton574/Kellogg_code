@@ -19,7 +19,7 @@ GAB As (
      , status
      , role
      , start_dt
-     From table(rpt_pbh634.ksm_pkg.tbl_committee_gab)
+     From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
 ),
 
 Trustee As (
