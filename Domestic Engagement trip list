@@ -1,0 +1,474 @@
+/* Sergio's Notes
+--- Using Household address: This will give me the fields I need without
+having to use entity table
+--- Just KSM Alumni too
+*/
+
+with h as (select *
+from rpt_pbh634.v_entity_ksm_households a
+where a.PROGRAM_GROUP is not null),
+
+home_addy As
+(Select addy.id_number
+--      , addy.addr_type_code
+      , tmsaddy.short_desc As Addy_Type_H
+      , addy.addr_status_code As Addr_status_code_H
+      , addy.addr_pref_ind As Addr_pref_ind_H
+      , addy.city As City_H
+      , addy.state_code As State_Code_H
+      , st.short_desc As State_H
+from address addy
+Inner Join tms_address_type tmsaddy
+      On addy.addr_type_code = tmsaddy.addr_type_code
+Inner Join tms_states st
+      On addy.state_code = st.state_code
+Where addy.addr_type_code = 'H'
+And st.short_desc = 'Texas'
+And addy.city = 'Austin'
+),
+
+biz_addy As
+(Select addy.id_number
+--      , addy.addr_type_code
+      , tmsaddy.short_desc As Addy_Type_B
+      , addy.addr_status_code As Addr_status_code_B
+      , addy.addr_pref_ind As Addr_pref_ind_B
+      , addy.city As City_B
+      , addy.state_code As State_Code_B
+      , st.short_desc As State_B
+from address addy
+Inner Join tms_address_type tmsaddy
+      On addy.addr_type_code = tmsaddy.addr_type_code
+Inner Join tms_states st
+      On addy.state_code = st.state_code
+Where addy.addr_type_code = 'B'
+And st.short_desc = 'Texas'
+And addy.city = 'Austin'
+),
+
+--- Primary address type
+
+/* Sergio's add
+
+This subquery pulls the primary address type for an entity
+
+I'm doing this to avoid using the entity table */
+
+prime as (Select DISTINCT
+      a.Id_number,
+      a.addr_type_code,
+      a.addr_pref_ind
+      FROM address a
+      where a.addr_pref_IND = 'Y'),
+
+--- Home Addy + Business Addy = id_merge
+--- This gives us ppl with home or business in Austin
+
+id_merge As (
+Select id_number
+From home_addy
+Union
+Select id_number
+From biz_addy
+),
+
+-- Drop table tmp_gv
+--;
+--Create table tmp_gv As
+--(Select * from rpt_pbh634.v_ksm_giving_summary)
+--;
+
+/* Sergio's add
+
+Combined Business Addy and Home Addy into one Subquery
+
+I also used id_merge as the base since we just want ppl in Austin */
+
+
+BA as (select id_merge.id_number
+     , prime.addr_type_code as primary_address_type
+     , home_addy.Addy_Type_H
+     , home_addy.addr_status_code_H
+     , home_addy.addr_pref_ind_H
+     , home_addy.city_H
+     , home_addy.State_H
+     , biz_addy.Addy_Type_B
+     , biz_addy.addr_status_code_B
+     , biz_addy.addr_pref_ind_B
+     , biz_addy.city_B
+     , biz_addy.State_B
+from id_merge
+left join home_addy on home_addy.id_number = id_merge.id_number
+left join biz_addy on biz_addy.id_number = id_merge.id_number
+left join prime on prime.id_number = id_merge.id_number)
+
+,KSM_Speaker As
+(Select act.id_number
+     , listagg(act.activity_code, ', ') Within Group (Order By act.start_dt ASC) as KSM_Speaker_code
+     , listagg(tmsat.short_desc, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Speaker
+     , listagg(act.activity_participation_code, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Speaker_Participation
+     , listagg(act.start_dt, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Speaker_Start_Dt
+     , listagg(act.xcomment, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Speaker_Comment
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KSP'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+KSM_Event_Host As
+(Select act.id_number
+     , listagg(act.activity_code, ', ') Within Group (Order By act.start_dt ASC) as KSM_Event_Host_code
+     , listagg(tmsat.short_desc, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Event_Host
+     , listagg(act.activity_participation_code, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Event_Host_Participation
+     , listagg(act.start_dt, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Event_Host_Start_Dt
+     , listagg(act.xcomment, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Event_Host_Comment
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KEH'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+KSM_Corp_Rec As
+(Select act.id_number
+     , listagg(act.activity_code, ', ') Within Group (Order By act.start_dt ASC) as KSM_Corp_Rec_code
+     , listagg(tmsat.short_desc, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Corp_Rec
+     , listagg(act.activity_participation_code, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Corp_Rec_Participation
+     , listagg(act.start_dt, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Corp_Rec_Start_Dt
+     , listagg(act.xcomment, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Corp_Rec_Comment
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KCR'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+KSM_Stu_Act As
+(Select sa.id_number
+      , listagg(sa.student_activity_code, ', ') Within Group (Order By sa.start_dt ASC) As Student_Act_code
+      , listagg(tmssp.short_desc, ', ') Within Group (Order By sa.start_dt ASC) As Student_Activity
+      , listagg(sa.student_particip_code, ', ') Within Group (Order By sa.start_dt ASC) As Student_Act_Participation
+      , listagg(sa.start_dt, ', ') Within Group (Order By sa.start_dt ASC) As Student_Act_Start_dt
+      , listagg(sa.xcomment, ', ') Within Group (Order By sa.start_dt ASC) As Student_Act_Comment
+From student_activity sa
+Inner Join tms_student_act tmssp
+      On tmssp.student_activity_code = sa.student_activity_code
+Where sa.student_activity_code In ('DAK', 'IKC', 'KSMT', 'KDKJS', 'KTC', 'KR', 'FFKDC', 'KSA36', 'KSB3', 'KSB33', 'KSA44', 'KSA51', 'KSA18', 'KSA93', 'KSB49', 'KSA98', 'KSB12', 'KSA54', 'KSB52', 'KSB25', 'KSB6', 'KSB51', 'KSA52', 'KSB56', 'KSA73', 'KSA74', 'KSB57', 'KSB40', 'KMSSA', 'KSA58', 'KSB41', 'KSB61', 'KSA86', 'KSA45', 'KSC', 'KSA84', 'KSB30', 'KVA', 'KSB81', 'KSA23', 'KSB14')
+Group By sa.id_number
+)
+,
+
+Admissions_Caller As
+(Select comm.id_number
+     , listagg(comm.committee_code, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_code
+     , listagg(tmscomm.short_desc, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller
+     , listagg(comm.committee_status_code, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_Status_code
+     , listagg(tmscommstat.short_desc, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_Status
+     , listagg(comm.start_dt, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_Start_dt
+     , listagg(comm.xcomment, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_Comment
+From committee comm
+Inner Join tms_committee_table tmscomm
+      On comm.committee_code = tmscomm.committee_code
+Inner Join tms_committee_status tmscommstat
+      On comm.committee_status_code = tmscommstat.committee_status_code
+Where comm.committee_code = 'KAAC'
+Group By comm.id_number
+)
+,
+
+KSM_Prop_Act As (
+Select prospect_id
+     , listagg(prospect_name, ', ') Within Group (Order By start_date ASC) as Proposal_Prospect
+     , listagg(proposal_id, ', ') Within Group (Order By start_date ASC) as Proposal_ID
+     , listagg(ksm_proposal_ind, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Ind
+     , listagg(probability, ', ') Within Group (Order By start_date ASC) as Proposal_Prob
+     , listagg(proposal_status, ', ') Within Group (Order By start_date ASC) as Proposal_Status
+     , listagg(proposal_active, ', ') Within Group (Order By start_date ASC) as Proposal_Active
+     , listagg(start_date, ', ') Within Group (Order By start_date ASC) as Proposal_Start_Dt
+     , listagg(ask_date, ', ') Within Group (Order By start_date ASC) as Proposal_Ask_Dt
+     , listagg(close_date, ', ') Within Group (Order By start_date ASC) as Proposal_Close_Dt
+     , listagg(proposal_title, ', ') Within Group (Order By start_date ASC) as Proposal_Title
+     , listagg(proposal_type, ', ') Within Group (Order By start_date ASC) as Proposal_Type
+     , listagg(total_original_ask_amt, ', ') Within Group (Order By start_date ASC) as Proposal_Orig_Ask_Amt
+     , listagg(total_anticipated_amt, ', ') Within Group (Order By start_date ASC) as Proposal_Ant_Amt
+     , listagg(ksm_ask, ', ') Within Group (Order By start_date ASC) as Proposal_KSM_Ask_Amt
+     , listagg(ksm_anticipated, ', ') Within Group (Order By start_date ASC) as Proposal_KSM_Ant_Amt
+     , listagg(proposal_manager, ', ') Within Group (Order By start_date ASC) as Proposal_Manager
+     , listagg(curr_ksm_proposal_manager, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Mgr
+     , listagg(curr_ksm_team, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Team
+     , listagg(proposal_assist, ', ') Within Group (Order By start_date ASC) as Proposal_Assist
+From RPT_PBH634.v_proposal_history_fast
+Where KSM_Proposal_ind = 'Y'
+And Proposal_Active = 'Y'
+Group By Prospect_ID
+),
+
+KSM_events As (
+SELECT id_number
+     , Event_ID
+     , event_type_desc
+From rpt_ssh5552.v_datamart_events
+Where ksm_event = 'Y'
+And start_fy_calc In ('2023', '2022', '2021', '2020', '2019', '2018')
+)
+,
+
+count_of_Virtual_Events As (
+SELECT id_number
+     , count(Event_ID) Virtual_Events
+From KSM_events
+Where event_type_desc In ('Hybrid', 'Online Event')
+Group By id_number
+),
+
+count_of_inperson_events As (
+SELECT id_number
+     , count(Event_ID) Inperson_Events
+From KSM_events
+Where event_type_desc In ('Alumni Travel', 'Breakfast', 'Brunch', 'Campaign', 'Charity Auction', 'Cocktail Reception', 'Commencement', 'Community Service', 'Dinner', 'Founders Day', 'Golf Tournament', 'Homecoming Weekend', 'Investiture', 'Lab and Campus Tours', 'Launches and Dedications', 'Lecture', 'Luncheon', 'Meeting', 'Panel', 'Performance', 'Philanthropic', 'Post-Game Gathering', 'Pre-Game Gathering', 'Professional Development', 'Reception', 'Recruitment', 'Reunion', 'Social Gathering', 'Speaker', 'Tailgate Party', 'Third Party Hosted Event')
+Group By id_number
+),
+
+KSM_Alumni_Clubs As (
+Select comm.id_number
+     , listagg(comm.committee_code, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Committee_Code
+     , listagg(tmsc.short_desc, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Committee
+     , listagg(comm.committee_status_code, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Comm_Status_Code
+     , listagg(tmss.short_desc, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Committee_Status
+     , listagg(comm.committee_title, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Comm_Title
+     , listagg(comm.committee_role_code, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Comm_Role_Code
+     , listagg(tmsr.short_desc, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As  Club_Committee_Role
+     , listagg(comm.date_added, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Date_Added
+From committee comm
+Inner Join tms_committee_table tmsc
+      On comm.committee_code = tmsc.committee_code
+Inner Join tms_committee_role tmsr
+      On comm.committee_role_code = tmsr.committee_role_code
+Inner Join tms_committee_status tmss
+      On comm.committee_status_code = tmss.committee_status_code
+Where tmsc.short_desc like '%Kellogg Alumni Club%'
+And comm.committee_status_code = 'C'
+Group By comm.id_number
+)
+,
+
+Interests As (
+Select int.id_number
+     , listagg(int.interest_code, ', ') Within Group (Order By int.interest_code ASC) As Interest_Code
+     , listagg(tint.short_desc, ', ') Within Group (Order By int.interest_code ASC) As Interests
+     , listagg(int.comment1, ', ') Within Group (Order By int.interest_code ASC) As Interest_Comment
+From interest int
+Inner Join tms_interest tint
+      On int.interest_code = tint.interest_code
+Group By int.id_number
+),
+
+/* Sergio's add
+
+This pulls everyone's primary employer: Job Title, Employer, FLD_Work
+
+I used this to avoid left joining on your base with a view (Paul's high job title)
+
+You might be able to use that high job title view as a subquery too. Up to You!*/
+
+employ As (
+  Select id_number
+  , job_title
+  , employment.fld_of_work_code
+  , fow.short_desc As fld_of_work
+  , employer_name1,
+    -- If there's an employer ID filled in, use the entity name
+    Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      -- Otherwise use the write-in field
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Where employment.primary_emp_ind = 'Y'
+),
+
+/* Sergio's Addition
+
+created a special handling subquery.
+
+Same concept: Avoiding left joining on a base */
+
+spec as (Select rpt_pbh634.v_entity_special_handling.ID_NUMBER,
+       rpt_pbh634.v_entity_special_handling.NO_CONTACT,
+       rpt_pbh634.v_entity_special_handling.NO_EMAIL_IND
+From rpt_pbh634.v_entity_special_handling)
+
+
+Select distinct idm.id_number
+     , h.pref_mail_name
+     , h.record_status_code
+     --- Using Household view instead
+     , h.HOUSEHOLD_ID
+     , h.HOUSEHOLD_RPT_NAME
+--     , giv.HOUSEHOLD_ID
+--     , giv.HOUSEHOLD_RPT_NAME
+--     , h.degrees_verbose
+     , h.first_ksm_year
+     , h.program
+---     , idm.pref_addr_type_code
+     , BA.primary_address_type as preferred_address_type
+     , BA.Addy_Type_H
+     , BA.addr_status_code_H
+     , BA.addr_pref_ind_H
+     , BA.city_H
+     , BA.State_H
+     , BA.Addy_Type_B
+     , BA.addr_status_code_B
+     , BA.addr_pref_ind_B
+     , BA.city_B
+     , BA.State_B
+     , job.job_title
+     , job.employer_name
+     , job.fld_of_work
+     , pros.giving_affiliation
+     , pros.prospect_manager
+     , pros.evaluation_rating
+     , pros.evaluation_date
+     , pros.officer_rating
+     , pros.prospect_stage
+--     , giv.ngc_lifetime
+--     , giv.FY_GIVING_FIRST_YR
+--     , giv.FY_GIVING_LAST_YR
+--     , giv.FY_GIVING_YR_COUNT
+--     , giv.LAST_GIFT_DATE
+--     , giv.LAST_GIFT_TYPE
+--     , giv.LAST_GIFT_RECOGNITION_CREDIT
+--     , giv.AF_STATUS
+--     , giv.AF_GIVING_SEGMENT
+--     , giv.KLC_CURRENT
+--     , giv.KLC_LYBUNT
+--     , giv.ngc_CFY
+--     , giv.ngc_PFY1 As ngc_Last_Year
+--     , giv.ngc_PFY2 As ngc_Two_Years_Ago
+--     , giv.ngc_PFY3 As ngc_Three_Years_Ago
+--     , giv.ngc_PFY4 As ngc_Four_Years_Ago
+--     , giv.ngc_PFY5 As ngc_Five_Years_Ago
+--   , speak.KSM_Speaker_code
+     , speak.KSM_Speaker
+--     , speak.KSM_Speaker_Participation
+--     , speak.KSM_Speaker_Start_Dt
+     , speak.KSM_Speaker_Comment
+--   , EVH.KSM_Event_Host_code
+     , EVH.KSM_Event_Host
+--     , EVH.KSM_Event_Host_Participation
+--     , EVH.KSM_Event_Host_Start_Dt
+     , EVH.KSM_Event_Host_Comment
+--   , KCR.KSM_Corp_Rec_code
+     , KCR.KSM_Corp_Rec
+--     , KCR.KSM_Corp_Rec_Participation
+--     , KCR.KSM_Corp_Rec_Start_Dt
+     , KCR.KSM_Corp_Rec_Comment
+--   , ksa.Student_Act_code
+     , ksa.Student_Activity
+--     , ksa.Student_Act_Participation
+--     , ksa.Student_Act_Start_dt
+     , ksa.Student_Act_Comment
+--   , admcall.Admissions_Caller_code
+     , admcall.Admissions_Caller
+--     , admcall.Admissions_Caller_Status_code
+--     , admcall.Admissions_Caller_Status
+--     , admcall.Admissions_Caller_Start_dt
+--     , admcall.Admissions_Caller_Comment
+     , KSM_Prop_Act.prospect_id
+     , KSM_Prop_Act.Proposal_Prospect
+     , KSM_Prop_Act.Proposal_ID
+     , KSM_Prop_Act.KSM_Proposal_Ind
+     , KSM_Prop_Act.Proposal_Type
+     , KSM_Prop_Act.Proposal_Prob
+     , KSM_Prop_Act.Proposal_Status
+     , KSM_Prop_Act.Proposal_Active
+     , KSM_Prop_Act.Proposal_Start_Dt
+     , KSM_Prop_Act.Proposal_Ask_Dt
+     , KSM_Prop_Act.Proposal_Close_Dt
+     , KSM_Prop_Act.Proposal_Title
+     , KSM_Prop_Act.Proposal_Type
+     , KSM_Prop_Act.Proposal_Orig_Ask_Amt
+     , KSM_Prop_Act.Proposal_Ant_Amt
+     , KSM_Prop_Act.Proposal_KSM_Ask_Amt
+     , KSM_Prop_Act.Proposal_KSM_Ant_Amt
+     , KSM_Prop_Act.Proposal_Manager
+     , KSM_Prop_Act.KSM_Proposal_Mgr
+     , KSM_Prop_Act.KSM_Proposal_Team
+     , KSM_Prop_Act.Proposal_Assist
+--     , ksme.Event_Id
+--     , ksme.Event_Name
+--     , ksme.Event_Start_Dt
+--     , ksme.Event_FY_Calc
+--     , ksme.Event_Desc
+--     , ksme.Ksm_Event_Ind
+       , virt.Virtual_Events
+       , inper.Inperson_Events
+--       , club.Club_Committee_Code
+       , club.Club_Committee
+--       , club.Club_Comm_Status_Code
+       , club.Club_Committee_Status
+       , club.Club_Comm_Title
+--       , club.Club_Comm_Role_Code
+       , club.Club_Committee_Role
+--       , club.Club_Date_Added
+       , intr.Interests
+       , shc.NO_EMAIL_IND
+       , shc.NO_CONTACT
+From id_merge idm
+--- took out entity and degrees, replaced with household view
+--- inner join h = inner joining the first subquery
+Inner Join h
+     On idm.id_number = h.id_number
+Inner Join nu_prs_trp_prospect pros
+     On pros.id_number = idm.id_number
+Left join BA
+     On idm.id_number = BA.id_number
+--- Using just one subquery now
+---Left join biz_addy
+---     On idm.id_number = biz_addy.id_number
+--Left Join rpt_pbh634.v_ksm_giving_summary giv
+--    On giv.id_number = idm.id_number
+Left Join KSM_Speaker Speak
+     On Speak.id_number = idm.id_number
+Left Join KSM_Event_Host EVH
+     On EVH.id_number = idm.id_number
+Left Join KSM_Corp_Rec KCR
+     On KCR.id_number = idm.id_number
+Left Join KSM_Stu_Act KSA
+     On KSA.id_number = idm.id_number
+Left Join Admissions_Caller admcall
+     On admcall.id_number = idm.id_number
+Left Join KSM_Prop_Act
+     On KSM_Prop_Act.prospect_Id = pros.prospect_id
+Left Join count_of_Virtual_Events virt
+     On idm.id_number = virt.id_number
+Left Join count_of_inperson_Events inper
+     On idm.id_number = inper.id_number
+--- Left Join rpt_pbh634.v_ksm_high_level_job_title job
+---     On idm.id_number = job.id_number
+--- Joining on full employment - one less view to left join
+Left Join employ job
+     on idm.id_number = job.id_number
+--- Make a Special handling subquiry
+--- one less left joining on a view
+Left Join spec SHC
+     On idm.id_number = SHC.id_number
+Left Join KSM_Alumni_Clubs club
+     On idm.id_number = club.id_number
+Left Join Interests intr
+     On idm.id_number = intr.id_number
+Left Join KSM_events
+     On KSM_events.id_number = idm.id_number
+Where h.record_status_code = 'A'
