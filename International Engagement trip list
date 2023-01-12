@@ -1,0 +1,546 @@
+With home_addy As
+(Select addy.id_number
+--      , addy.addr_type_code
+      , tmsaddy.short_desc As Addy_Type_H
+      , addy.addr_status_code As addr_status_code_H
+      , addy.addr_pref_ind As addr_pref_ind_H
+      , addy.city As city_H
+      , addy.country_code As country_code_H
+      , tms_country.short_desc As Country_H
+from address addy
+Inner Join tms_address_type tmsaddy
+      On addy.addr_type_code = tmsaddy.addr_type_code
+Inner Join tms_country
+      On addy.country_code = tms_country.country_code
+Where addy.addr_status_code = 'A'
+And addy.addr_type_code = 'H'
+And addy.COUNTRY_CODE IN ('SING', 'TAIWN')
+),
+
+biz_addy As
+(Select addy.id_number
+--      , addy.addr_type_code
+      , tmsaddy.short_desc As Addy_Type_B
+      , addy.addr_status_code As addr_status_code_B
+      , addy.addr_pref_ind As addr_pref_ind_B
+      , addy.city As city_B
+      , addy.country_code As country_code_B
+      , tms_country.short_desc As Country_B
+from address addy
+Inner Join tms_address_type tmsaddy
+      On addy.addr_type_code = tmsaddy.addr_type_code
+Inner Join tms_country
+      On addy.country_code = tms_country.country_code
+Where addy.addr_status_code = 'A'
+And addy.addr_type_code = 'B'
+And addy.COUNTRY_CODE IN ('SING', 'TAIWN')
+),
+
+employ as (
+  Select id_number
+  , job_title
+  , employment.fld_of_work_code
+  , fow.short_desc As fld_of_work
+  , employer_name1,
+    -- If there's an employer ID filled in, use the entity name
+    Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      -- Otherwise use the write-in field
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Where employment.primary_emp_ind = 'Y')
+  ,
+
+KSM_Spec AS (Select spec.ID_NUMBER,
+       spec.NO_EMAIL_IND,
+       spec.NO_CONTACT
+From rpt_pbh634.v_entity_special_handling spec)
+,
+
+id_merge As (
+Select id_number
+From home_addy
+Union
+Select id_number
+From biz_addy
+)
+,
+
+KSM_Speaker As
+(Select act.id_number
+     , listagg(act.activity_code, ', ') Within Group (Order By act.start_dt ASC) as KSM_Speaker_code
+     , listagg(tmsat.short_desc, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Speaker
+     , listagg(act.activity_participation_code, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Speaker_Participation
+     , listagg(act.start_dt, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Speaker_Start_Dt
+     , listagg(act.xcomment, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Speaker_Comment
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KSP'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+KSM_Event_Host As
+(Select act.id_number
+     , listagg(act.activity_code, ', ') Within Group (Order By act.start_dt ASC) as KSM_Event_Host_code
+     , listagg(tmsat.short_desc, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Event_Host
+     , listagg(act.activity_participation_code, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Event_Host_Participation
+     , listagg(act.start_dt, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Event_Host_Start_Dt
+     , listagg(act.xcomment, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Event_Host_Comment
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KEH'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+KMAG_Feature As
+(Select act.id_number
+     , listagg(act.activity_code, ', ') Within Group (Order By act.start_dt ASC) as KMAG_code
+     , listagg(tmsat.short_desc, ', ') Within Group (Order By act.start_dt ASC)  As KMAG
+     , listagg(act.activity_participation_code, ', ') Within Group (Order By act.start_dt ASC)  As KMAG_Participation
+     , listagg(act.start_dt, ', ') Within Group (Order By act.start_dt ASC)  As KMAG_Start_Dt
+     , listagg(act.xcomment, ', ') Within Group (Order By act.start_dt ASC)  As KMAG_Comment
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KSM'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+KSM_Corp_Rec As
+(Select act.id_number
+     , listagg(act.activity_code, ', ') Within Group (Order By act.start_dt ASC) as KSM_Corp_Rec_code
+     , listagg(tmsat.short_desc, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Corp_Rec
+     , listagg(act.activity_participation_code, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Corp_Rec_Participation
+     , listagg(act.start_dt, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Corp_Rec_Start_Dt
+     , listagg(act.xcomment, ', ') Within Group (Order By act.start_dt ASC)  As KSM_Corp_Rec_Comment
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KCR'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+KSM_Stu_Act As
+(Select sa.id_number
+      , listagg(sa.student_activity_code, ', ') Within Group (Order By sa.start_dt ASC) As Student_Act_code
+      , listagg(tmssp.short_desc, ', ') Within Group (Order By sa.start_dt ASC) As Student_Activity
+      , listagg(sa.student_particip_code, ', ') Within Group (Order By sa.start_dt ASC) As Student_Act_Participation
+      , listagg(sa.start_dt, ', ') Within Group (Order By sa.start_dt ASC) As Student_Act_Start_dt
+      , listagg(sa.xcomment, ', ') Within Group (Order By sa.start_dt ASC) As Student_Act_Comment
+From student_activity sa
+Inner Join tms_student_act tmssp
+      On tmssp.student_activity_code = sa.student_activity_code
+Where sa.student_activity_code In ('DAK', 'IKC', 'KSMT', 'KDKJS', 'KTC', 'KR', 'FFKDC', 'KSA36', 'KSB3', 'KSB33', 'KSA44', 'KSA51', 'KSA18', 'KSA93', 'KSB49', 'KSA98', 'KSB12', 'KSA54', 'KSB52', 'KSB25', 'KSB6', 'KSB51', 'KSA52', 'KSB56', 'KSA73', 'KSA74', 'KSB57', 'KSB40', 'KMSSA', 'KSA58', 'KSB41', 'KSB61', 'KSA86', 'KSA45', 'KSC', 'KSA84', 'KSB30', 'KVA', 'KSB81', 'KSA23', 'KSB14')
+Group By sa.id_number
+)
+,
+
+Admissions_Caller As
+(Select comm.id_number
+     , listagg(comm.committee_code, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_code
+     , listagg(tmscomm.short_desc, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller
+     , listagg(comm.committee_status_code, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_Status_code
+     , listagg(tmscommstat.short_desc, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_Status
+     , listagg(comm.start_dt, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_Start_dt
+     , listagg(comm.xcomment, ', ') Within Group (Order By comm.start_dt ASC) As Admissions_Caller_Comment
+From committee comm
+Inner Join tms_committee_table tmscomm
+      On comm.committee_code = tmscomm.committee_code
+Inner Join tms_committee_status tmscommstat
+      On comm.committee_status_code = tmscommstat.committee_status_code
+Where comm.committee_code = 'KAAC'
+Group By comm.id_number
+)
+,
+
+KSM_Prop_Act As (
+Select prospect_id
+     , listagg(prospect_name, ', ') Within Group (Order By start_date ASC) as Proposal_Prospect
+     , listagg(proposal_id, ', ') Within Group (Order By start_date ASC) as Proposal_ID
+     , listagg(ksm_proposal_ind, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Ind
+     , listagg(probability, ', ') Within Group (Order By start_date ASC) as Proposal_Prob
+     , listagg(proposal_status, ', ') Within Group (Order By start_date ASC) as Proposal_Status
+     , listagg(proposal_active, ', ') Within Group (Order By start_date ASC) as Proposal_Active
+     , listagg(start_date, ', ') Within Group (Order By start_date ASC) as Proposal_Start_Dt
+     , listagg(ask_date, ', ') Within Group (Order By start_date ASC) as Proposal_Ask_Dt
+     , listagg(close_date, ', ') Within Group (Order By start_date ASC) as Proposal_Close_Dt
+     , listagg(proposal_title, ', ') Within Group (Order By start_date ASC) as Proposal_Title
+     , listagg(proposal_type, ', ') Within Group (Order By start_date ASC) as Proposal_Type
+     , listagg(total_original_ask_amt, ', ') Within Group (Order By start_date ASC) as Proposal_Orig_Ask_Amt
+     , listagg(total_anticipated_amt, ', ') Within Group (Order By start_date ASC) as Proposal_Ant_Amt
+     , listagg(ksm_ask, ', ') Within Group (Order By start_date ASC) as Proposal_KSM_Ask_Amt
+     , listagg(ksm_anticipated, ', ') Within Group (Order By start_date ASC) as Proposal_KSM_Ant_Amt
+     , listagg(proposal_manager, ', ') Within Group (Order By start_date ASC) as Proposal_Manager
+     , listagg(curr_ksm_proposal_manager, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Mgr
+     , listagg(curr_ksm_team, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Team
+     , listagg(proposal_assist, ', ') Within Group (Order By start_date ASC) as Proposal_Assist
+From RPT_PBH634.v_proposal_history_fast
+Where KSM_Proposal_ind = 'Y'
+And Proposal_Active = 'Y'
+Group By Prospect_ID
+),
+
+counts_of_proposal_statuses as (
+SELECT distinct pro.prospect_ID
+       ,pro.proposal_status
+       ,count(pro.proposal_id) n
+FROM RPT_PBH634.v_proposal_history_fast pro
+Where pro.KSM_Proposal_ind = 'Y'
+And pro.Proposal_Active = 'N'
+GROUP BY pro.prospect_ID, pro.proposal_status
+)
+,
+
+Proposal_Status_Join As
+(Select distinct c.prospect_ID
+       , case when c.proposal_status = 'Withdrawn' Then n else 0 End As Withdrawn_Count
+       , case when c.proposal_status = 'Declined' Then n else 0 End As Declined_count
+       , case when c.proposal_status = 'Funded' Then n else 0 End As Funded_count
+       , case when c.proposal_status = 'Anticipated' Then n else 0 End As Anticipated_Count
+       , case when c.proposal_status = 'Decision Deferred' Then n else 0 End As Decision_Deferred_Count
+       , case when c.proposal_status = 'Deferred by Officer' Then n else 0 End As Deferred_by_Officer_Count
+       , case when c.proposal_status = 'Deferred by Prospect' Then n else 0 End As Deferred_by_Prospect_Count
+       , case when c.proposal_status = 'Pending Donor Response' Then n else 0 End As Pending_Donor_Response_Count
+       , case when c.proposal_status = 'Submitted' Then n else 0 End As Submitted_Count
+       , case when c.proposal_status = 'Approved by Donor' Then n else 0 End As Approved_Count
+From counts_of_proposal_statuses c
+Inner join nu_prs_trp_prospect pros
+      On pros.id_number = c.prospect_ID
+)
+,
+
+Closed_Prop_Status_Counts As
+(select distinct prospect_ID
+       , max(Withdrawn_Count) As ClosedProp_Withdrawn
+       , max(Declined_count) As ClosedProp_Declined
+       , max(Funded_count) As ClosedProp_Funded
+       , max(Anticipated_Count) As ClosedProp_Anticipated
+       , max(Decision_Deferred_Count) As ClosedProp_Decision_Deferred
+       , max(Deferred_by_Officer_Count) As ClosedProp_Def_by_Officer
+       , max(Deferred_by_Prospect_Count) As ClosedProp_Def_by_Prospect
+       , max(Pending_Donor_Response_Count) As ClosedProp_Pend_Donor_Resp
+       , max(Submitted_Count) As ClosedProp_Submitted
+       , max(Approved_Count) As ClosedProp_Approved
+from Proposal_Status_Join
+group by prospect_ID
+)
+,
+
+nonKSMdegrees As (
+Select deg.id_number
+     , listagg(deg.institution_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_School
+     , listagg(inst.institution_name, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_School_Name
+     , listagg(deg.degree_type, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Degree_Type
+     , listagg(deg.degree_level_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Degree_Level_Code
+     , listagg(tdl.short_desc, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Degree_Level
+     , listagg(deg.school_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_School_Code
+     , listagg(deg.campus_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Campus_Code
+     , listagg(camp.short_desc, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Campus
+     , listagg(deg.degree_year, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Degree_Year
+     , listagg(deg.financial_aid_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Fin_Aid
+     , listagg(deg.non_grad_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Non_Grad
+     , listagg(deg.date_modified, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Date_Mod
+     , listagg(deg.operator_name, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Operator_Name
+     , listagg(deg.xcomment, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Comments
+From degrees deg
+Left Join institution inst
+      On deg.institution_code = inst.institution_code
+Left Join tms_degree_level tdl
+      On deg.degree_level_code = tdl.degree_level_code
+Left Join tms_campus camp
+      On deg.campus_code = camp.campus_code
+Where NOT deg.school_code Like 'BUS'
+AND NOT deg.school_code Like 'KSM'
+And deg.institution_code = '31173'
+Group By deg.id_number
+),
+
+nonNUdegrees As (
+Select deg.id_number
+     , listagg(deg.institution_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_School
+     , listagg(inst.institution_name, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_School_Name
+     , listagg(deg.degree_type, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Degree_Type
+     , listagg(deg.degree_level_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Degree_Level_Code
+     , listagg(tdl.short_desc, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Degree_Level
+     , listagg(deg.school_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_School_Code
+     , listagg(deg.campus_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Campus_Code
+     , listagg(camp.short_desc, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Campus
+     , listagg(deg.degree_year, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Degree_Year
+     , listagg(deg.financial_aid_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Fin_Aid
+     , listagg(deg.non_grad_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Non_Grad
+     , listagg(deg.date_modified, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Date_Mod
+     , listagg(deg.operator_name, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Operator_Name
+     , listagg(deg.xcomment, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Comments
+From degrees deg
+Left Join institution inst
+      On deg.institution_code = inst.institution_code
+Left Join tms_degree_level tdl
+      On deg.degree_level_code = tdl.degree_level_code
+Left Join tms_campus camp
+      On deg.campus_code = camp.campus_code
+Where NOT deg.school_code Like 'BUS'
+AND NOT deg.school_code Like 'KSM'
+And NOT deg.institution_code Like '31173'
+Group By deg.id_number
+),
+
+Ethnicity As(
+Select e.id_number
+     , e.ethnic_code
+     , eth.short_desc As Ethnicity
+from entity e
+Left Join tms_race eth
+     On e.ethnic_code = eth.ethnic_code
+),
+
+count_of_Virtual_Events As (
+SELECT id_number
+     , count(Event_ID) Virtual_Events
+From rpt_ssh5552.v_datamart_events
+Where event_type_desc In ('Hybrid', 'Online Event')
+And ksm_event = 'Y'
+And start_fy_calc In ('2023', '2022', '2021', '2020', '2019', '2018')
+Group By id_number
+),
+
+count_of_inperson_events As (
+SELECT id_number
+     , count(Event_ID) Inperson_Events
+From rpt_ssh5552.v_datamart_events
+Where event_type_desc In ('Alumni Travel', 'Breakfast', 'Brunch', 'Campaign', 'Charity Auction', 'Cocktail Reception', 'Commencement', 'Community Service', 'Dinner', 'Founders Day', 'Golf Tournament', 'Homecoming Weekend', 'Investiture', 'Lab and Campus Tours', 'Launches and Dedications', 'Lecture', 'Luncheon', 'Meeting', 'Panel', 'Performance', 'Philanthropic', 'Post-Game Gathering', 'Pre-Game Gathering', 'Professional Development', 'Reception', 'Recruitment', 'Reunion', 'Social Gathering', 'Speaker', 'Tailgate Party', 'Third Party Hosted Event')
+And ksm_event = 'Y'
+And start_fy_calc In ('2023', '2022', '2021', '2020', '2019', '2018')
+Group By id_number
+),
+
+KSM_Alumni_Clubs As (
+Select comm.id_number
+     , listagg(comm.committee_code, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Committee_Code
+     , listagg(tmsc.short_desc, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Committee
+     , listagg(comm.committee_status_code, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Comm_Status_Code
+     , listagg(tmss.short_desc, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Committee_Status
+     , listagg(comm.committee_title, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Comm_Title
+     , listagg(comm.committee_role_code, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Comm_Role_Code
+     , listagg(tmsr.short_desc, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As  Club_Committee_Role
+     , listagg(comm.date_added, ', ') Within Group (Order By comm.committee_status_code ASC, comm.date_added ASC) As Club_Date_Added
+From committee comm
+Inner Join tms_committee_table tmsc
+      On comm.committee_code = tmsc.committee_code
+Inner Join tms_committee_role tmsr
+      On comm.committee_role_code = tmsr.committee_role_code
+Inner Join tms_committee_status tmss
+      On comm.committee_status_code = tmss.committee_status_code
+Where tmsc.short_desc like '%Kellogg Alumni Club%'
+And comm.committee_status_code = 'C'
+Group By comm.id_number
+)
+,
+
+Interests As (
+Select int.id_number
+     , listagg(int.interest_code, ', ') Within Group (Order By int.interest_code ASC) As Interest_Code
+     , listagg(tint.short_desc, ', ') Within Group (Order By int.interest_code ASC) As Interests
+     , listagg(int.comment1, ', ') Within Group (Order By int.interest_code ASC) As Interest_Comment
+From interest int
+Inner Join tms_interest tint
+      On int.interest_code = tint.interest_code
+Group By int.id_number
+)
+
+Select idm.id_number
+     , e.pref_mail_name
+     , e.record_status_code
+     , giv.HOUSEHOLD_ID
+     , giv.HOUSEHOLD_RPT_NAME
+     , deg.degrees_verbose
+     , deg.first_ksm_year
+     , deg.program
+     , e.pref_addr_type_code
+     , home_addy.Addy_Type_H
+     , home_addy.addr_status_code_H
+     , home_addy.addr_pref_ind_H
+     , home_addy.city_H
+     , home_addy.Country_H
+     , biz_addy.Addy_Type_B
+     , biz_addy.addr_status_code_B
+     , biz_addy.addr_pref_ind_B
+     , biz_addy.city_B
+     , biz_addy.country_code_B
+     , biz_addy.Country_B
+     , employ.job_title
+     , employ.employer_name
+     , job.business_title As High_Level_Biz_Title
+     , job.business_name As High_Level_Biz_Name
+     , job.job_title As High_Level_Job_Title
+     , job.employer_name As High_Level_Employer_Name
+     , job.position_level As High_Level_Position
+     , job.fld_of_work As High_Level_Field_of_Work
+     , job.fld_of_spec1 As High_Level_Field_of_Spec
+     , job.high_level_job_title As High_Level_Job_Title_1
+     , pros.giving_affiliation
+     , pros.prospect_manager
+     , pros.evaluation_rating
+     , pros.evaluation_date
+     , pros.officer_rating
+     , pros.prospect_stage
+     , giv.ngc_lifetime
+     , giv.FY_GIVING_FIRST_YR
+     , giv.FY_GIVING_LAST_YR
+     , giv.FY_GIVING_YR_COUNT
+     , giv.LAST_GIFT_DATE
+     , giv.LAST_GIFT_TYPE
+     , giv.LAST_GIFT_RECOGNITION_CREDIT
+     , giv.AF_STATUS
+     , giv.AF_GIVING_SEGMENT
+     , giv.KLC_CURRENT
+     , giv.KLC_LYBUNT
+     , giv.ngc_CFY
+     , giv.ngc_PFY1 As ngc_Last_Year
+     , giv.ngc_PFY2 As ngc_Two_Years_Ago
+     , giv.ngc_PFY3 As ngc_Three_Years_Ago
+     , giv.ngc_PFY4 As ngc_Four_Years_Ago
+     , giv.ngc_PFY5 As ngc_Five_Years_Ago
+--   , speak.KSM_Speaker_code
+     , speak.KSM_Speaker
+--     , speak.KSM_Speaker_Participation
+--     , speak.KSM_Speaker_Start_Dt
+     , speak.KSM_Speaker_Comment
+--   , EVH.KSM_Event_Host_code
+     , EVH.KSM_Event_Host
+--     , EVH.KSM_Event_Host_Participation
+--     , EVH.KSM_Event_Host_Start_Dt
+     , EVH.KSM_Event_Host_Comment
+--   , KMAG.KMAG_code
+     , KMAG.KMAG
+--     , KMAG.KMAG_Participation
+--     , KMAG.KMAG_Start_Dt
+     , KMAG.KMAG_Comment
+--   , KCR.KSM_Corp_Rec_code
+     , KCR.KSM_Corp_Rec
+--     , KCR.KSM_Corp_Rec_Participation
+--     , KCR.KSM_Corp_Rec_Start_Dt
+     , KCR.KSM_Corp_Rec_Comment
+--   , ksa.Student_Act_code
+     , ksa.Student_Activity
+--     , ksa.Student_Act_Participation
+--     , ksa.Student_Act_Start_dt
+     , ksa.Student_Act_Comment
+--   , admcall.Admissions_Caller_code
+     , admcall.Admissions_Caller
+--     , admcall.Admissions_Caller_Status_code
+--     , admcall.Admissions_Caller_Status
+--     , admcall.Admissions_Caller_Start_dt
+--     , admcall.Admissions_Caller_Comment
+     , KSM_Prop_Act.prospect_id
+     , KSM_Prop_Act.Proposal_Prospect
+     , KSM_Prop_Act.Proposal_ID
+     , KSM_Prop_Act.KSM_Proposal_Ind
+     , KSM_Prop_Act.Proposal_Type
+--     , KSM_Prop_Act.Proposal_Prob
+     , KSM_Prop_Act.Proposal_Status
+     , KSM_Prop_Act.Proposal_Active
+     , KSM_Prop_Act.Proposal_Start_Dt
+--     , KSM_Prop_Act.Proposal_Ask_Dt
+     , KSM_Prop_Act.Proposal_Close_Dt
+     , KSM_Prop_Act.Proposal_Title
+--     , KSM_Prop_Act.Proposal_Type
+--     , KSM_Prop_Act.Proposal_Orig_Ask_Amt
+     , KSM_Prop_Act.Proposal_Ant_Amt
+--     , KSM_Prop_Act.Proposal_KSM_Ask_Amt
+--     , KSM_Prop_Act.Proposal_KSM_Ant_Amt
+     , KSM_Prop_Act.Proposal_Manager
+--     , KSM_Prop_Act.KSM_Proposal_Mgr
+--     , KSM_Prop_Act.KSM_Proposal_Team
+     , KSM_Prop_Act.Proposal_Assist
+     , PSC.ClosedProp_Withdrawn
+     , PSC.ClosedProp_Declined
+     , PSC.ClosedProp_Funded
+     , PSC.ClosedProp_Anticipated
+     , PSC.ClosedProp_Decision_Deferred
+     , PSC.ClosedProp_Def_by_Officer
+     , PSC.ClosedProp_Def_by_Prospect
+     , PSC.ClosedProp_Pend_Donor_Resp
+     , PSC.ClosedProp_Submitted
+     , PSC.ClosedProp_Approved
+--     , ksme.Event_Id
+--     , ksme.Event_Name
+--     , ksme.Event_Start_Dt
+--     , ksme.Event_FY_Calc
+--     , ksme.Event_Desc
+--     , ksme.Ksm_Event_Ind
+       , virt.Virtual_Events
+       , inper.Inperson_Events
+--       , club.Club_Committee_Code
+       , club.Club_Committee
+--       , club.Club_Comm_Status_Code
+       , club.Club_Committee_Status
+       , club.Club_Comm_Title
+--       , club.Club_Comm_Role_Code
+       , club.Club_Committee_Role
+--       , club.Club_Date_Added
+       , intr.Interests
+       , shc.NO_EMAIL_IND
+       , shc.NO_CONTACT
+From entity e
+Inner Join id_merge idm
+     On e.id_number = idm.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+     On e.id_number = deg.id_number
+Left join home_addy
+     On e.id_number = home_addy.id_number
+Left join biz_addy
+     On e.id_number = biz_addy.id_number
+Left Join Employ
+     On employ.id_number = e.id_number
+Left Join rpt_pbh634.v_ksm_giving_summary giv
+     On giv.id_number = deg.id_number
+Left Join KSM_Speaker Speak
+     On Speak.id_number = deg.id_number
+Left Join KSM_Event_Host EVH
+     On EVH.id_number = deg.id_number
+Left Join KMAG_Feature KMAG
+     On KMAG.id_number = deg.id_number
+Left Join KSM_Corp_Rec KCR
+     On KCR.id_number = deg.id_number
+Left Join KSM_Stu_Act KSA
+     On KSA.id_number = deg.id_number
+Left Join Admissions_Caller admcall
+     On admcall.id_number = deg.id_number
+Left Join nu_prs_trp_prospect pros
+     On pros.id_number = deg.id_number
+Left Join KSM_Prop_Act
+     On KSM_Prop_Act.prospect_Id = pros.prospect_id
+Left Join Closed_Prop_Status_Counts PSC
+     On PSC.prospect_Id = pros.prospect_id
+Left Join Ethnicity eth
+     On e.id_number = eth.id_number
+Left Join count_of_Virtual_Events virt
+     On e.id_number = virt.id_number
+Left Join count_of_inperson_Events inper
+     On e.id_number = inper.id_number
+Left Join rpt_pbh634.v_ksm_high_level_job_title job
+     On e.id_number = job.id_number
+Left Join KSM_Spec SHC
+     On e.id_number = SHC.id_number
+Left Join KSM_Alumni_Clubs club
+     On e.id_number = club.id_number
+Left Join Interests intr
+     On e.id_number = intr.id_number
+Where e.record_status_code = 'A'
+and e.id_number In ('0000281847', '0000282517', '0000281899', '0000281933', '0000283195', '0000282771', '0000283155', '0000286939', '0000283061', '0000370142', '0000281968', '0000495756', '0000469551', '0000432464', '0000609310', '0000630470', '0000630425', '0000495726', '0000253721', '0000412097', '0000418874', '0000500797', '0000356794', '0000256996', '0000512226', '0000512236', '0000495755', '0000467270', '0000351200', '0000580707', '0000469388', '0000650251', '0000648067', '0000647456', '0000532525', '0000515718', '0000621600', '0000630431', '0000512234', '0000630665', '0000609537', '0000283185', '0000282767', '0000282394', '0000533177', '0000647610', '0000649111', '0000648732', '0000649571', '0000650133', '0000649168', '0000649336', '0000649447', '0000647303', '0000648190', '0000651390', '0000648577', '0000650492', '0000649731', '0000648786', '0000650085', '0000647340', '0000532291', '0000647211', '0000283172', '0000469386', '0000296826', '0000596350', '0000515967', '0000645268', '0000341943', '0000285078', '0000517266', '0000648859', '0000385012', '0000349489', '0000595906', '0000596416', '0000075467', '0000668175', '0000591624', '0000665964', '0000665522', '0000665940', '0000533154', '0000667000', '0000667362', '0000664704', '0000665301', '0000647194', '0000433116', '0000442447', '0000769187', '0000609923', '0000495724', '0000580625', '0000616871', '0000407580', '0000666901', '0000718538', '0000718572', '0000718577', '0000718536', '0000344764', '0000721301', '0000563244', '0000708049', '0000707987', '0000727870', '0000727842', '0000484109', '0000725546', '0000718119', '0000647191', '0000725112', '0000722733', '0000666665', '0000736692', '0000733243', '0000733244', '0000734083', '0000734057', '0000733114', '0000732572', '0000734283', '0000741722', '0000622535', '0000484462', '0000750839', '0000281860', '0000442427', '0000756629', '0000757322', '0000756600', '0000756381', '0000752153', '0000549151', '0000762829', '0000762801', '0000762770', '0000762782', '0000745812', '0000762893', '0000655330', '0000515663', '0000647025', '0000627379', '0000132649', '0000634727', '0000708073', '0000654838', '0000722770', '0000548229', '0000665735', '0000512233', '0000295654', '0000295556', '0000294846', '0000547878', '0000410124', '0000420284', '0000548303', '0000308975', '0000282790', '0000282746', '0000282334', '0000281568', '0000281518', '0000134776', '0000134775', '0000134495', '0000134312', '0000668322', '0000650432', '0000649107', '0000134984', '0000733254', '0000727872', '0000727869', '0000717291', '0000665678', '0000662492', '0000656506', '0000654847', '0000650628', '0000650206', '0000649723', '0000649533', '0000648924', '0000648870', '0000648791', '0000648764', '0000648427', '0000501759', '0000648426', '0000647946', '0000647476', '0000647236', '0000646903', '0000645267', '0000630426', '0000629296', '0000622536', '0000613926', '0000610068', '0000609531', '0000607609', '0000596008', '0000591619', '0000588381', '0000580543', '0000565064', '0000553319', '0000516626', '0000501751', '0000484470', '0000469597', '0000469231', '0000469132', '0000461527', '0000442475', '0000442458', '0000442417', '0000433454', '0000433413', '0000432779', '0000432468', '0000432462', '0000432451', '0000409159', '0000408521', '0000403679', '0000367697', '0000356798', '0000548652', '0000778249', '0000660918', '0000665929', '0000469565', '0000779884', '0000542518', '0000722815', '0000779826', '0000495735', '0000785516', '0000666857', '0000731502', '0000732417', '0000656137', '0000574286', '0000574479', '0000413058', '0000718553', '0000286947', '0000665491', '0000500816', '0000516344', '0000548209', '0000645162', '0000708646', '0000442014', '0000795913', '0000634757', '0000649190', '0000665958', '0000484541', '0000580137', '0000795918', '0000795925', '0000717717', '0000794593', '0000666629', '0000666037', '0000667404', '0000134782', '0000614801', '0000629389', '0000656006', '0000596489', '0000799424', '0000645103', '0000748040', '0000795914', '0000531089', '0000419402', '0000515865', '0000596334', '0000292153', '0000804686', '0000743049', '0000666885', '0000756601', '0000700184', '0000804282', '0000783453', '0000442597', '0000548416', '0000783488', '0000797318', '0000813544', '0000787601', '0000580671', '0000648745', '0000820297', '0000609535', '0000791457', '0000548100', '0000515961', '0000751761', '0000609675', '0000595897', '0000826825', '0000580314', '0000580784', '0000822784', '0000281579', '0000548412', '0000832084', '0000583789', '0000832211', '0000831877', '0000294695', '0000645416', '0000442440', '0000500253', '0000836797', '0000484531', '0000833169', '0000580130', '0000281659', '0000751825', '0000798687', '0000532485', '0000283198', '0000340870', '0000825693', '0000838833', '0000718565', '0000564762', '0000530214', '0000500735', '0000799585', '0000839944', '0000839910', '0000839901', '0000839857', '0000847390', '0000822116', '0000821771', '0000548425', '0000580636', '0000647543', '0000609533', '0000544414', '0000839763', '0000649185', '0000785599', '0000548251', '0000533142', '0000564504', '0000282954', '0000442461', '0000442437', '0000870673', '0000863472', '0000595548', '0000783503', '0000749678', '0000718680', '0000579770', '0000564023', '0000708673', '0000426967', '0000533158', '0000609397', '0000563024', '0000469007', '0000548266', '0000565039', '0000281463', '0000727017', '0000565044', '0000549134', '0000646746', '0000665257', '0000512213', '0000401947', '0000822786', '0000468998', '0000533143', '0000281378', '0000160036', '0000766885', '0000441763', '0000565037', '0000532705', '0000281275', '0000329655', '0000403350', '0000565033', '0000282363', '0000734129', '0000307229', '0000328695', '0000548666', '0000322521', '0000751416', '0000645260', '0000579307', '0000565038', '0000718548', '0000595844', '0000549143', '0000548378', '0000442455', '0000530232', '0000565035', '0000366337', '0000565059', '0000757313', '0000468817', '0000169383', '0000500950', '0000389942', '0000580618', '0000500944', '0000284445', '0000548143', '0000766889', '0000515883', '0000630451', '0000668832', '0000391152', '0000648089', '0000293097', '0000596491', '0000533153', '0000430597', '0000596511')
