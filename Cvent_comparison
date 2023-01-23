@@ -73,6 +73,27 @@ Where telephone_status_code = 'A'
 And preferred_ind = 'Y'
 ),
 
+nonprim_phone As (
+Select e.id_number
+--     , e.pref_mail_name
+--     , listagg(tel.telephone_type_code, ', ') Within Group (Order By tel.telephone_type_code ASC) as Tele_Type
+     , listagg(tmsc.short_desc, ', ') Within Group (Order By tel.telephone_type_code ASC) as Nonprim_Tele_Type
+     , listagg(tel.telephone_status_code, ', ') Within Group (Order By tel.telephone_type_code ASC) as Nonprim_Tele_Status
+     , listagg(tel.preferred_ind, ', ') Within Group (Order By tel.telephone_type_code ASC) as  Nonprim_Tele_Pref_Ind
+--     , tel.country_code
+--     , tel.area_code
+     , listagg(tel.telephone_number, ', ') Within Group (Order By tel.telephone_type_code ASC) as  Nonprim_Tele_Number
+From telephone tel
+Inner Join entity e
+      On e.id_number = tel.id_number
+Left Join tms_telephone_type tmsc
+      On tmsc.telephone_type_code = tel.telephone_type_code
+Where tel.telephone_status_code = 'A'
+And tel.preferred_ind = 'N'
+Group By e.Id_number
+)
+,
+
 prefaddress As (
 Select a.id_number
      , tms_addr_status.short_desc
@@ -207,6 +228,10 @@ Select cve.id_number
      , pph.country_code As telephone_country_code
      , pph.area_code As telephone_area_code
      , pph.telephone_number
+     , nppho.Nonprim_Tele_Type
+     , nppho.Nonprim_Tele_Status
+     , nppho.Nonprim_Tele_Pref_Ind
+     , nppho.Nonprim_Tele_Number
      , hadr.address_status as home_addr_status
      , hadr.address_type as home_addr_type
      , hadr.addr_pref_ind as home_pref_ind
@@ -248,6 +273,8 @@ Left Join prefaddress prefemp
      On pe.employer_id_number = prefemp.id_number
 Left Join prim_phone pph
      On e.id_number = pph.id_number
+Left Join nonprim_phone nppho
+     On e.id_number = nppho.id_number
 Left Join HomeAddr hadr
      On e.id_number = hadr.id_number
 Left Join BusAddr badr
