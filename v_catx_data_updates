@@ -62,6 +62,7 @@ Select int.id_number
      , int.stop_dt
      , int.comment1
      , int.date_added
+     , int.date_modified
      , int.operator_name
      , int.data_source_code
 From interest int
