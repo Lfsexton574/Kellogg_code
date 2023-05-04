@@ -94,3 +94,7 @@ Left Join Trustee_Sp
      On Trustee_Sp.Trustee_Spouse = deg.id_number
 Left Join RPT_PBH634.v_entity_special_handling sh
      On sh.id_number = deg.id_number
+Where not deg.program like 'UNK'
+And not deg.program like '%NONGRD'
+And e.record_status_code = 'A'
+
