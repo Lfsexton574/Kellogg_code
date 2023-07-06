@@ -1,0 +1,332 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# ### Importing libraries and reading in data
+
+# In[1]:
+
+
+import sys
+get_ipython().system('conda update --yes --prefix {sys.prefix} seaborn')
+import pandas as pd
+import numpy as np
+import re
+import seaborn as sns
+import matplotlib.pyplot as plt
+import plotly.express as px
+import chardet
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "all"
+
+
+# In[2]:
+
+
+conda update --all
+
+
+# In[3]:
+
+
+with open('Alumni Engagement model_Score Count_FY23_5.1.csv', 'rb') as f:
+    enc = chardet.detect(f.read())  # or readline if the file is large
+    
+pd.read_csv('Alumni Engagement model_Score Count_FY23_5.1.csv', encoding = enc['encoding'], low_memory=False)
+
+
+# ### Assigning dataframe 
+
+# In[4]:
+
+
+AE_Model = pd.read_csv('Alumni Engagement model_Score Count_FY23_5.1.csv', encoding = enc['encoding'], low_memory=False)
+AE_Model
+
+
+# ### Reviewing data
+
+# AE_Model.head(10)
+# AE_Model.tail(10)
+
+# In[5]:
+
+
+AE_Model.info()
+
+
+# In[6]:
+
+
+AE_Model.shape
+
+
+# pd.set_option('display.max_columns', None)
+# AE_Model.head(50)
+# #entire output read here
+
+# In[7]:
+
+
+AE_Model.describe()
+
+
+# ### Turning null values into zeroes
+
+# In[8]:
+
+
+AE_Model_v2 = AE_Model.fillna(0)
+AE_Model_v2.describe()
+
+
+# pd.set_option('display.max_columns', None)
+# AE_Model_v2.head(100)
+
+# ### Data transformation
+# #### Adding column for NGC Log10
+# ##### Log10 turns NGC to number of digits in amount instead of specific giving amount. This allows NGC to be included in weighted score without hyper-inflating the final score.
+
+# In[9]:
+
+
+def log10plus1(x):
+    return np.log10(x + 1)
+    
+#print(log10plus1(0)) # 0
+#print(log10plus1(9)) # 1
+#AE_Model_v2['NGC_LIFETIME'].apply(log10plus1)
+#add this to the dataframe as a new column
+AE_Model_v2['NGC_LT_Log_10'] = AE_Model_v2['NGC_LIFETIME'].apply(log10plus1)
+
+
+#AE_zscore_test = stats.zscore(AE_Model_v3[['NGC_LIFETIME_LOG10', 'KLC_COUNT', 'SPEAKER_COUNT', 'EVENT_HOST_COUNT', 'CORP_REC_COUNT', 'STUDENT_ACT_COUNT',
+#       'ADM_CALLER_COUNT', 'INTERVIEW_COUNT', 'SPOUSE_COUNT', 'CHILD_COUNT', 'NUCLEAR_FAM_COUNT', 'NON_NUC_FAM_COUNT', 'ACQUAINTANCE_COUNT',
+#       'INPERSON_EVENT_COUNT', 'ONLINE_EVENT_COUNT', 'CLUBEXEC_COUNT', 'CLUBMEMBER_COUNT', 'FUNDEDPROP_COUNT', 'sum_stats']])
+#AE_zscore_test.head(50)
+
+
+# #### Transforming Y/N to binary and squaring specific datapoints
+# ##### Current and LYBUNT KLC have 'Y' tranformed to '1' to be included in scores. Other datapoints are squared to proportionally reduce the high end of the range, smoothing out the scores.
+
+# In[10]:
+
+
+#AE_Model_v4['KLC_CURRENT'] = AE_Model_v4['KLC_CURRENT'].map({'Y':1, '0':0})
+#AE_Model_v4['KLC_LYBUNT'] = AE_Model_v4['KLC_LYBUNT'].map({'Y':1, '0':0})
+AE_Model_v2 = AE_Model_v2.replace({'KLC_CURRENT': {'Y': 1}})
+AE_Model_v2 = AE_Model_v2.replace({'KLC_LYBUNT': {'Y': 1}})
+AE_Model_v2['KSM_SPEAKER_COUNT_SQ'] = np.sqrt(AE_Model_v2['KSM_SPEAKER_COUNT'])
+AE_Model_v2['KSM_EVENT_HOST_COUNT_SQ'] = np.sqrt(AE_Model_v2['KSM_EVENT_HOST_COUNT'])
+AE_Model_v2['KSM_NUC_REL_COUNT_SQ'] = np.sqrt(AE_Model_v2['KSM_NUC_REL_COUNT'])
+AE_Model_v2['KSM_NONNUC_REL_COUNT_SQ'] = np.sqrt(AE_Model_v2['KSM_NONNUC_REL_COUNT'])
+AE_Model_v2['CLOSEDPROP_FUNDED_SQ'] = np.sqrt(AE_Model_v2['CLOSEDPROP_FUNDED'])
+AE_Model_v2['KSM_INPER_EVENT_SQ'] = np.sqrt(AE_Model_v2['KSM_INPER_EVENT_COUNT'])
+AE_Model_v2['KSM_VIRT_EVENT_SQ'] = np.sqrt(AE_Model_v2['KSM_VIRT_EVENT_COUNT'])
+AE_Model_v2['Donor_Nondonor'] = np.where(AE_Model_v2['NGC_LT_Log_10'], '1', '0')
+AE_Model_v2['Donor_Nondonor']
+AE_Model_v2.info()
+AE_Model_v2.dtypes
+
+
+# #### Creating two different datasets to measure against each other - one with all counts, one with certain datapoints squared
+# ##### Comparing will help to see which logic creates a smoother trendline for scoring
+
+# In[11]:
+
+
+orig_counts = ['KLC_CURRENT', 'KLC_LYBUNT', 'KSM_SPEAKER_COUNT', 'KSM_EVENT_HOST_COUNT', 
+'KSM_KCORPREC_COUNT', 'KSM_STU_ACT_COUNT', 'KSM_KAD_CALLER_COUNT', 'KSM_INTERVIEWER_COUNT', 'KSM_SPOUSE_COUNT',
+'KSM_CHILD_COUNT', 'KSM_NUC_REL_COUNT', 'KSM_NONNUC_REL_COUNT', 'KSM_ACQ_REL_COUNT', 'KSM_INPER_EVENT_COUNT',
+'KSM_VIRT_EVENT_COUNT', 'ALUMNICLUB_EXEC_ROLES', 'ALUMNICLUB_MEMBER_ROLES', 'CLOSEDPROP_FUNDED', 'NGC_LT_Log_10']
+
+plus_squares = ['KLC_CURRENT', 'KLC_LYBUNT', 'KSM_SPEAKER_COUNT_SQ', 'KSM_EVENT_HOST_COUNT_SQ',
+'KSM_KCORPREC_COUNT', 'KSM_STU_ACT_COUNT', 'KSM_KAD_CALLER_COUNT', 'KSM_INTERVIEWER_COUNT', 'KSM_SPOUSE_COUNT', 'KSM_CHILD_COUNT',
+'KSM_NUC_REL_COUNT_SQ', 'KSM_NONNUC_REL_COUNT_SQ', 'KSM_ACQ_REL_COUNT', 'KSM_INPER_EVENT_SQ', 'KSM_VIRT_EVENT_SQ',
+'ALUMNICLUB_EXEC_ROLES', 'ALUMNICLUB_MEMBER_ROLES', 'CLOSEDPROP_FUNDED_SQ', 'NGC_LT_Log_10']
+
+
+# ##### Creating two different sets of scores, each summing the different sets of datapoints
+
+# In[12]:
+
+
+AE_Model_v2['sum_stats_counts'] = AE_Model_v2[orig_counts].sum(axis=1)
+AE_Model_v2['sum_stats_sq'] = AE_Model_v2[plus_squares].sum(axis=1)
+
+
+# In[13]:
+
+
+AE_Model_v2.describe()
+
+
+# AE_Model_v2.head(50)
+
+# AE_Model_v2.sort_values('sum_stats_counts', ascending = False)
+# 
+# AE_Model_v2.sort_values('sum_stats_sq', ascending = False)
+# 
+
+# #### Comparing the score between two datasets - Counts and Squares
+# ##### We see that Squares has a lower max and better distribution
+
+# In[14]:
+
+
+plt.hist(AE_Model_v2['sum_stats_counts'], color='mediumseagreen', bins=25)
+plt.hist(AE_Model_v2['sum_stats_sq'], color= 'mediumpurple', bins=25)
+
+
+# In[15]:
+
+
+plt.hist(AE_Model_v2['sum_stats_sq'], color= 'mediumpurple', bins=50)
+
+
+# AE_Model_v2[AE_Model_v2['ID_NUMBER'] == 86400]
+
+# ### Creating new dataframe - only alums with sum_stats_sq score greater than zero; exploring data
+
+# In[16]:
+
+
+AE_Model_v3 = AE_Model_v2[AE_Model_v2['sum_stats_sq'] > 0]
+
+
+# In[17]:
+
+
+AE_Model_v3.describe()
+
+
+# In[18]:
+
+
+pd.set_option('display.max_rows', None)
+AE_Model_v3.info()
+AE_Model_v3.dtypes
+
+
+# ### Creating new dataframe only containing needed datapoints
+
+# In[19]:
+
+
+AE_Model_v4 = AE_Model_v3[['ID_NUMBER', 'KLC_CURRENT', 'KLC_LYBUNT', 'KSM_SPEAKER_COUNT_SQ', 'KSM_EVENT_HOST_COUNT_SQ',
+'KSM_KCORPREC_COUNT', 'KSM_STU_ACT_COUNT', 'KSM_KAD_CALLER_COUNT', 'KSM_INTERVIEWER_COUNT', 'KSM_SPOUSE_COUNT', 'KSM_CHILD_COUNT',
+'KSM_NUC_REL_COUNT_SQ', 'KSM_NONNUC_REL_COUNT_SQ', 'KSM_ACQ_REL_COUNT', 'KSM_INPER_EVENT_SQ', 'KSM_VIRT_EVENT_SQ',
+'ALUMNICLUB_EXEC_ROLES', 'ALUMNICLUB_MEMBER_ROLES', 'CLOSEDPROP_FUNDED_SQ', 'NGC_LT_Log_10', 'sum_stats_sq']]
+
+
+# In[20]:
+
+
+AE_Model_v4.info()
+
+
+# ### Checking zscores to smooth out distribution and compare to sum_stats_sq output
+# ##### Zscores make Standard Deviation = 1, measure distance of min and max compared to StanDev
+
+# In[21]:
+
+
+import scipy
+from scipy import stats
+
+
+# In[22]:
+
+
+AE_zscore_test = stats.zscore(AE_Model_v4)
+
+
+# ##### Comparing zscores to sum_stats_sq to make it easy to see how the current variables/model impact the scores
+# ##### We see the sum_stats_sq max scores are much more in line, which will make this data easier to work with to produce a weighted score
+
+# In[23]:
+
+
+def check_variable_contributions(dataframe):
+    return dataframe.describe().loc[['mean', 'std', 'min', 'max']].transpose()
+    
+#AE_Model[cols].describe().loc[['mean', 'std', 'min', 'max']].transpose()
+check_variable_contributions(AE_Model_v4)
+check_variable_contributions(AE_zscore_test)
+
+
+# #### Checking average engaged
+
+# In[24]:
+
+
+cur_ave = check_variable_contributions(AE_Model_v4)['mean'][1:20]
+cur_prob = cur_ave/sum(cur_ave)
+cur_prob
+
+
+# #### Checking most engaged
+
+# In[25]:
+
+
+cur_max = check_variable_contributions(AE_Model_v4)['max'][1:20]
+cur_prob_max = cur_max/sum(cur_max)
+cur_prob_max
+
+
+# #### Looking at Most Engaged, we see Student Activities, In Person Events, and Virtual Events have the biggest effect on the score and need to be weighted down. NGC Log10 has a big effect as well, but that is appropriate as it represents giving.
+# ##### Creating a variable of datapoints to assist in weighting
+
+# In[26]:
+
+
+Weights = AE_Model_v4[['KLC_CURRENT', 'KLC_LYBUNT', 'KSM_SPEAKER_COUNT_SQ', 'KSM_EVENT_HOST_COUNT_SQ',
+'KSM_KCORPREC_COUNT', 'KSM_STU_ACT_COUNT', 'KSM_KAD_CALLER_COUNT', 'KSM_INTERVIEWER_COUNT', 'KSM_SPOUSE_COUNT',
+'KSM_CHILD_COUNT', 'KSM_NUC_REL_COUNT_SQ', 'KSM_NONNUC_REL_COUNT_SQ', 'KSM_ACQ_REL_COUNT', 'KSM_INPER_EVENT_SQ',
+'KSM_VIRT_EVENT_SQ', 'ALUMNICLUB_EXEC_ROLES', 'ALUMNICLUB_MEMBER_ROLES', 'CLOSEDPROP_FUNDED_SQ', 'NGC_LT_Log_10']]
+
+
+# In[27]:
+
+
+Weights.head(25)
+
+
+# ##### Creating weighting variable to multiply against Weights, and adding output as a new column 'weighted_sum_stats'
+
+# In[28]:
+
+
+w = [1.0, 1.0, 1.0, 1.0, 1.0, 1/2, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1/2, 1/3, 1.0, 1.0, 1.0, 1.0,]
+AE_Model_v4['weighted_sum_stats'] = Weights @ w
+#AE_Model_v4['weighted_sum_stats']
+
+
+# In[29]:
+
+
+AE_Model_v4.describe()
+AE_Model_v4.head(20)
+
+
+# In[30]:
+
+
+plt.hist(AE_Model_v4['sum_stats_sq'], color='mediumpurple' ,bins = 20)
+plt.hist(AE_Model_v4['weighted_sum_stats'], color='coral', bins = 20)
+
+
+# In[31]:
+
+
+plt.scatter(AE_Model_v4['NGC_LT_Log_10'], AE_Model_v4['weighted_sum_stats'], c ="coral")
+plt.xlabel("NGC_LT_Log_10")
+plt.ylabel("weighted_sum_stats")
+plt.show()
+#loess regression - whats the average between two numbers, moving trendline, simplifies scatterplot
+
+
+# In[32]:
+
+
+plt.plot(AE_Model_v4['weighted_sum_stats'])
