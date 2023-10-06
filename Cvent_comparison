@@ -223,6 +223,15 @@ Select cve.id_number
      , pemp.job_title
      , prefemp.city AS Empl_Pref_City
      , prefemp.state_code AS Empl_Pref_State
+     , ba.address_status As Biz_Addy_Status
+     , ba.address_type As Biz_Addy_Type
+     , ba.addr_pref_ind As Biz_Addy_Pref_Ind
+     , ba.business_title As Biz_Addy_Job_Title
+     , ba.company_name_1 As Biz_Addy_CoName1
+     , ba.company_name_2 As Biz_Addy_CoName2
+     , ba.city As Biz_Addy_City
+     , ba.state_code As Biz_Addy_State_Code
+     , ba.zipcode As Biz_Addy_ZIP
      , pph.telephone_type_code
      , pph.telephone_status_code
      , pph.preferred_ind As telephone_pref_ind
