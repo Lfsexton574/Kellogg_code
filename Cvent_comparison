@@ -213,13 +213,13 @@ Select cve.id_number
      , Li.xComment
      , pe.email_address As pref_email
      , npe.active_non_pref_emails
-     , pe.job_status_code
-     , pe.primary_emp_ind
-     , pe.employer_id_number
+     , pemp.job_status_code
+     , pemp.primary_emp_ind
+     , pemp.employer_id_number
      , premp.report_name AS Employer_Name
-     , pe.employer_name1
-     , pe.employer_name2
-     , pe.job_title
+     , pemp.employer_name1
+     , pemp.employer_name2
+     , pemp.job_title
      , prefemp.city AS Empl_Pref_City
      , prefemp.state_code AS Empl_Pref_State
      , pph.telephone_type_code
@@ -265,7 +265,7 @@ Left Join non_pref_email npe
      On e.id_number = npe.id_number
 Left Join busaddress ba
     On e.id_number = ba.id_number
-Left Join prim_emp pe
+Left Join prim_emp pemp
      On e.id_number = pe.id_number
 Left Join entity premp
      On pe.employer_id_number = premp.id_number
