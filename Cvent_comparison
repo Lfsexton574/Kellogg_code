@@ -31,6 +31,7 @@ Select a.id_number
      , tms_addr_status.short_desc As address_status
      , tms_address_type.short_desc As address_type
      , a.addr_pref_ind
+     , a.business_title
      , a.company_name_1
      , a.company_name_2
      , a.city
@@ -266,11 +267,11 @@ Left Join non_pref_email npe
 Left Join busaddress ba
     On e.id_number = ba.id_number
 Left Join prim_emp pemp
-     On e.id_number = pe.id_number
+     On e.id_number = pemp.id_number
 Left Join entity premp
      On pe.employer_id_number = premp.id_number
 Left Join prefaddress prefemp
-     On pe.employer_id_number = prefemp.id_number
+     On pemp.employer_id_number = prefemp.id_number
 Left Join prim_phone pph
      On e.id_number = pph.id_number
 Left Join nonprim_phone nppho
