@@ -278,7 +278,7 @@ Left Join busaddress ba
 Left Join prim_emp pemp
      On e.id_number = pemp.id_number
 Left Join entity premp
-     On pe.employer_id_number = premp.id_number
+     On pemp.employer_id_number = premp.id_number
 Left Join prefaddress prefemp
      On pemp.employer_id_number = prefemp.id_number
 Left Join prim_phone pph
