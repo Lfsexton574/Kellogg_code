@@ -70,7 +70,7 @@ Select deg.ID_NUMBER
      , gab.short_desc AS GAB_Desc
      , gab.status AS GAB_Status
      , Trustee.id_number AS Trustee_ID
-     , Trustee.role As Trsutee_Role
+     , Trustee.role As Trustee_Role
      , Trustee_Sp.Trustee_Spouse
      , asia.committee_status_code As Asia_Exec_Board_Status
      , asia.Committee As Asia_Exec_Board
