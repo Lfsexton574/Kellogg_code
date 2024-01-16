@@ -70,7 +70,7 @@ Select hcak.ID_NUMBER
      , gab.short_desc AS GAB_Desc
      , gab.status AS GAB_Status
      , Trustee.id_number AS Trustee_ID
-     , Trustee.role As Trsutee_Role
+     , Trustee.role As Trustee_Role
      , Trustee_Sp.Trustee_Spouse
      , asia.committee_status_code As Asia_Exec_Board_Status
      , asia.Committee As Asia_Exec_Board
@@ -79,20 +79,20 @@ Select hcak.ID_NUMBER
      , sh.no_email_ind
 From HCAK_AM_Aug_emails hcak
 Inner Join entity e
-     On e.id_number = hcak.id_number
+     On hcak.id_number = e.id_number
 Inner Join pref_email pe
      On hcak.id_number = pe.id_number
 Inner Join rpt_pbh634.v_entity_ksm_degrees deg
-      On hcak.id_number = deg.id_number
+     On hcak.id_number = deg.id_number
 Left Join facstaff fs
-     On fs.id_number = deg.id_number
+     On hcak.id_number = fs.id_number
 Left Join Asia
-     On deg.id_number = asia.id_number
+     On hcak.id_number = asia.id_number
 Left Join GAB
-     On GAB.id_number = deg.id_number
+     On hcak.id_number = GAB.id_number
 Left Join trustee
-     On trustee.id_number = deg.id_number
+     On hcak.id_number = trustee.id_number
 Left Join Trustee_Sp
-     On Trustee_Sp.Trustee_Spouse = deg.id_number
+     On hcak.id_number = Trustee_Sp.Trustee_Spouse
 Left Join RPT_PBH634.v_entity_special_handling sh
-     On sh.id_number = deg.id_number
+     On hcak.id_number = sh.id_number
