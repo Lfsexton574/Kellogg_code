@@ -11,7 +11,8 @@ Where em.email_status_code = 'A'
 And em.preferred_ind = 'Y'
 And shc.NO_EMAIL_IND is NULL
 And shc.No_contact is NULL
-),
+)
+,
 
 GAB As (
     Select id_number
@@ -29,11 +30,13 @@ Trustee As (
      , tru.role
      , tru.start_dt
      from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) tru
-),
+)
+,
 
 Trustee_Sp As (
     Select trusp.Spouse_id_number As Trustee_Spouse
      from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) trusp
+)
 ,
 
 asia As (
@@ -45,7 +48,8 @@ Inner Join tms_committee_table ctab
       On comm.committee_code = ctab.committee_code
 Where comm.committee_code = 'KEBA'
 And comm.committee_status_code = 'C'
-),
+)
+,
 
 facstaff As ( -- Based on NU_RPT_PKG_SCHOOL_TRANSACTION
 Select Distinct af.id_number
