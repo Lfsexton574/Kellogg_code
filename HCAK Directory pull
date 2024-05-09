@@ -67,6 +67,17 @@ Select hcak.ID_NUMBER
      , deg.degrees_verbose
      , deg.first_ksm_year
      , deg.program
+     ,
+     Case
+        When hcak.Membership_Level = '1'
+          Then 'Paid'
+        When hcak.Membership_Level = '2'
+          Then 'Free'
+        When hcak.id_number Is Not Null
+          Then 'In Directory'
+          Else ''
+        End
+      As HCAK
      , pe.email_address
      , pe.preferred_ind
      , pe.NO_EMAIL_IND
@@ -81,7 +92,7 @@ Select hcak.ID_NUMBER
      , fs.KSM_Faculty_or_Staff
      , sh.no_contact
      , sh.no_email_ind
-From HCAK_AM_Aug_emails hcak
+From HCAK_AM_Aug_emails hcak -- This needs to be updated with IDs from Alumni Magnet monthly, include ID and Membership Level
 Inner Join entity e
      On hcak.id_number = e.id_number
 Inner Join pref_email pe
