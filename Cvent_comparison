@@ -50,15 +50,28 @@ And a.addr_status_code In ('A','K')
 
 prim_emp AS (
 Select id_number
-     , job_status_code
-     , primary_emp_ind
-     , employer_id_number
-     , employer_name1
-     , employer_name2
-     , job_title
-From employment
-Where job_status_code = 'C'
-And primary_emp_ind = 'Y'
+       , -- If there's an employer ID filled in, use the entity name
+   Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      -- Otherwise use the write-in field
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+       , job_title
+       , employment.fld_of_work_code
+       , employment.job_status_code
+       , fow.short_desc As fld_of_work
+       , employment.fld_of_spec_code1
+       , fos.short_desc As fld_of_spec
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Left Join tms_fld_of_spec fos
+       On fos.fld_of_spec_code = employment.fld_of_spec_code1
+  Where employment.primary_emp_ind = 'Y'
+  And employment.job_status_code = 'C'
 ),
 
 prim_phone As (
@@ -214,13 +227,13 @@ Select cve.id_number
      , Li.xComment
      , pe.email_address As pref_email
      , npe.active_non_pref_emails
-     , pemp.job_status_code
-     , pemp.primary_emp_ind
-     , pemp.employer_id_number
-     , premp.report_name AS Employer_Name
-     , pemp.employer_name1
-     , pemp.employer_name2
+     , pemp.employer_name
      , pemp.job_title
+     , pemp.fld_of_work_code
+     , pemp.job_status_code
+     , pemp.fld_of_work
+     , pemp.fld_of_spec_code1    -- Double check employment sub-query, join, and output
+     , pemp.fld_of_spec
      , prefemp.city AS Empl_Pref_City
      , prefemp.state_code AS Empl_Pref_State
      , ba.address_status As Biz_Addy_Status
@@ -277,8 +290,8 @@ Left Join busaddress ba
     On e.id_number = ba.id_number
 Left Join prim_emp pemp
      On e.id_number = pemp.id_number
-Left Join entity premp
-     On pemp.employer_id_number = premp.id_number
+--Left Join entity premp
+--     On pemp.employer_id_number = premp.id_number
 Left Join prefaddress prefemp
      On pemp.employer_id_number = prefemp.id_number
 Left Join prim_phone pph
