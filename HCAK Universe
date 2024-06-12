@@ -162,7 +162,7 @@ Select idm.id_number
 From id_merge idm
 Inner Join entity e
      On e.id_number = idm.id_number
-Inner Join pref_email pe
+Left Join pref_email pe
      On pe.id_number = idm.id_number
 Left Join rpt_pbh634.v_entity_ksm_degrees deg
      On deg.id_number = idm.id_number
