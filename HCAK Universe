@@ -9,7 +9,7 @@ Select id_number
       -- Otherwise use the write-in field
       Else trim(employer_name1 || ' ' || employer_name2)
     End As employer_name
-       , employer_name1
+--       , employer_name1
        , job_title
        , employment.fld_of_work_code
        , employment.job_status_code
@@ -162,10 +162,10 @@ Select idm.id_number
 From id_merge idm
 Inner Join entity e
      On e.id_number = idm.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+     On deg.id_number = idm.id_number
 Left Join pref_email pe
      On pe.id_number = idm.id_number
-Left Join rpt_pbh634.v_entity_ksm_degrees deg
-     On deg.id_number = idm.id_number
 Left Join HCAK
      On HCAK.id_number = idm.id_number
 Left Join employ emp
