@@ -1,0 +1,163 @@
+With employ as (
+Select id_number
+       , -- If there's an employer ID filled in, use the entity name
+   Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      -- Otherwise use the write-in field
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+ --      , employer_name1
+       , job_title
+       , employment.fld_of_work_code
+       , employment.job_status_code
+       , fow.short_desc As fld_of_work
+       , employment.fld_of_spec_code1
+       , fos.short_desc As fld_of_spec
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Left Join tms_fld_of_spec fos
+       On fos.fld_of_spec_code = employment.fld_of_spec_code1
+  Where employment.primary_emp_ind = 'Y'
+  And employment.job_status_code = 'C'
+  And (employment.fld_of_work_code In ('L11', 'COMB', 'FIN', '12', '14', 'L69', 'INVB', 'IMGT', 'L70', 'PLBO', '36', 'SECT', 'L140')
+  Or employment.fld_of_spec_code1 In ('186', '341', '345', '355', '357', 'F03', 'F08', 'F10', 'K07', 'S20', 'S21', 'S23', 'S24', 'S25', 'S28'))
+  )
+,
+
+FinInt As (
+Select int.id_number
+     , listagg(int.interest_code, ', ') Within Group (Order By int.interest_code ASC) As Interest_Code
+     , listagg(tint.short_desc, ', ') Within Group (Order By int.interest_code ASC) As Fin_Interest
+     , listagg(int.comment1, ', ') Within Group (Order By int.interest_code ASC) As Interest_Comment
+From interest int
+Inner Join tms_interest tint
+      On int.interest_code = tint.interest_code
+Where int.interest_code In ('L43', 'L11', 'L69', 'L70')
+Group By int.id_number
+)
+,
+
+id_merge As (
+Select id_number
+From FinInt
+Union
+Select id_number
+From employ
+)
+,
+
+pref_email As (
+Select em.id_number
+     , em.email_address
+     , em.preferred_ind
+     , shc.NO_EMAIL_IND
+     , shc.No_contact
+From Email em
+Left Join rpt_pbh634.v_entity_special_handling SHC
+     on em.id_number = shc.id_number
+Where em.email_status_code = 'A'
+And em.preferred_ind = 'Y'
+And shc.NO_EMAIL_IND is NULL
+And shc.No_contact is NULL
+),
+
+GAB As (
+    Select id_number
+     , short_desc
+     , status
+     , role
+     , start_dt
+     From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
+),
+
+Trustee As (
+    Select tru.id_number
+     , tru.short_desc
+     , tru.status
+     , tru.role
+     , tru.start_dt
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) tru
+),
+
+Trustee_Sp As (
+    Select trusp.Spouse_id_number As Trustee_Spouse
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) trusp
+),
+
+asia As (
+Select comm.id_number
+     , comm.committee_status_code
+     , ctab.short_desc As Committee
+From committee comm
+Inner Join tms_committee_table ctab
+      On comm.committee_code = ctab.committee_code
+Where comm.committee_code = 'KEBA'
+And comm.committee_status_code = 'C'
+),
+
+facstaff As ( -- Based on NU_RPT_PKG_SCHOOL_TRANSACTION
+Select Distinct af.id_number
+              , tms_affil.short_desc As KSM_Faculty_or_Staff
+From Affiliation af
+Inner Join tms_affiliation_level tms_affil
+      On af.affil_level_code = tms_affil.affil_level_code
+Where af.affil_level_code In ('ES', 'EF') -- Staff, Faculty
+And af.affil_status_code = 'C'
+And af.affil_code = 'KM'
+)
+
+Select idm.id_number
+     , e.pref_mail_name
+     , e.institutional_suffix
+     , e.record_status_code
+     , deg.degrees_concat
+     , deg.first_ksm_year
+     , deg.PROGRAM
+     , fin.Fin_Interest
+     , emp.employer_name As FIN_Employer
+     , emp.job_title As FIN_Job
+     , emp.fld_of_work_code
+     , emp.fld_of_work
+     , emp.fld_of_spec_code1
+     , emp.fld_of_spec
+     , pe.preferred_ind
+     , pe.NO_EMAIL_IND
+     , pe.No_contact
+     , gab.short_desc AS GAB_Desc
+     , gab.status AS GAB_Status
+     , Trustee.id_number AS Trustee_ID
+     , Trustee.role As Trustee_Role
+     , Trustee_Sp.Trustee_Spouse
+     , asia.committee_status_code As Asia_Exec_Board_Status
+     , asia.Committee As Asia_Exec_Board
+     , fs.KSM_Faculty_or_Staff
+     , sh.no_contact
+     , sh.no_email_ind
+From id_merge idm
+Inner Join entity e
+     On e.id_number = idm.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+     On deg.id_number = idm.id_number
+Left Join pref_email pe
+     On pe.id_number = idm.id_number
+Left Join employ emp
+     On emp.id_number = idm.id_number
+Left Join FinInt fin
+     On fin.id_number = idm.id_number
+Left Join facstaff fs
+     On fs.id_number = idm.id_number
+Left Join Asia
+     On asia.id_number = idm.id_number
+Left Join GAB
+     On GAB.id_number = idm.id_number
+Left Join trustee
+     On trustee.id_number = idm.id_number
+Left Join Trustee_Sp
+     On Trustee_Sp.Trustee_Spouse = idm.id_number
+Left Join RPT_PBH634.v_entity_special_handling sh
+     On sh.id_number = idm.id_number
+Where e.record_status_code = 'A'
