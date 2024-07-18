@@ -89,6 +89,20 @@ Select deg.ID_NUMBER
      , deg.degrees_verbose
      , deg.first_ksm_year
      , deg.program
+     , goo.Alum_Email_Check
+     , goo.CATx_bday
+     , goo.alum_id
+     , goo.first_name
+     , goo.last_name
+     , goo.birth_month
+     , goo.birth_year
+     , goo.graduation_year
+     , goo.account_username
+     , goo.account_domain
+     , goo.email_address
+     , goo.eligible_domain
+     , goo.pin
+     , goo.pin_date
      , pe.email_address
      , pe.preferred_ind
      , pe.NO_EMAIL_IND
@@ -104,20 +118,6 @@ Select deg.ID_NUMBER
      , sh.no_contact
      , sh.no_email_ind
      , e.pref_mail_name
-     , goo.Alum_Email_Check
-     , goo.CATx_bday
-     , goo.alum_id
-     , goo.first_name
-     , goo.last_name
-     , goo.birth_month
-     , goo.birth_year
-     , goo.graduation_year
-     , goo.account_username
-     , goo.account_domain
-     , goo.email_address
-     , goo.eligible_domain
-     , goo.pin
-     , goo.pin_date
 From entity e
 Left Join pref_email pe
      On pe.id_number = e.id_number
@@ -137,4 +137,4 @@ Left Join RPT_PBH634.v_entity_special_handling sh
      On sh.id_number = e.id_number
 Left Join Google Goo
      On Goo.id_number = e.id_number
-Where e.id_number = ('enter IDs') --- Drop ExecEd entity IDs here
+Where e.id_number In ('enter ID', 'enter ID', 'enter ID') --- Drop ExecEd entity IDs here
