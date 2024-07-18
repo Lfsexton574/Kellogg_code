@@ -103,7 +103,7 @@ Select deg.ID_NUMBER
      , goo.eligible_domain
      , goo.pin
      , goo.pin_date
-     , pe.email_address
+--     , pe.email_address
      , pe.preferred_ind
      , pe.NO_EMAIL_IND
      , pe.No_contact
