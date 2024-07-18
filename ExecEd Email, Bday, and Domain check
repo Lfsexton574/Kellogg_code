@@ -1,0 +1,140 @@
+With pref_email As (
+Select em.id_number
+     , em.email_address
+     , em.preferred_ind
+     , shc.NO_EMAIL_IND
+     , shc.No_contact
+From Email em
+Left Join rpt_pbh634.v_entity_special_handling SHC
+     on em.id_number = shc.id_number
+Where em.email_status_code = 'A'
+And em.preferred_ind = 'Y'
+And shc.NO_EMAIL_IND is NULL
+And shc.No_contact is NULL
+),
+
+GAB As (
+    Select id_number
+     , short_desc
+     , status
+     , role
+     , start_dt
+     From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
+),
+
+Trustee As (
+    Select tru.id_number
+     , tru.short_desc
+     , tru.status
+     , tru.role
+     , tru.start_dt
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) tru
+),
+
+Trustee_Sp As (
+    Select trusp.Spouse_id_number As Trustee_Spouse
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) trusp
+),
+
+asia As (
+Select comm.id_number
+     , comm.committee_status_code
+     , ctab.short_desc As Committee
+From committee comm
+Inner Join tms_committee_table ctab
+      On comm.committee_code = ctab.committee_code
+Where comm.committee_code = 'KEBA'
+And comm.committee_status_code = 'C'
+),
+
+facstaff As ( -- Based on NU_RPT_PKG_SCHOOL_TRANSACTION
+Select Distinct af.id_number
+              , tms_affil.short_desc As KSM_Faculty_or_Staff
+From Affiliation af
+Inner Join tms_affiliation_level tms_affil
+      On af.affil_level_code = tms_affil.affil_level_code
+Where af.affil_level_code In ('ES', 'EF') -- Staff, Faculty
+And af.affil_status_code = 'C'
+And af.affil_code = 'KM'
+),
+
+Google As (
+Select e.id_number
+     , e.pref_mail_name
+     , CASE
+        WHEN goog.birth_month Is Not Null and e.birth_dt Is Not Null
+             THEN 'Good to go'
+               ELSE 'Mismatch'
+               END As Alum_Email_Check
+     , e.birth_dt As CATx_bday
+     , goog.alum_id
+     , goog.first_name
+     , goog.last_name
+     , goog.birth_month
+     , goog.birth_year
+     , goog.graduation_year
+     , goog.account_username
+     , goog.account_domain
+     , goog.email_address
+     , goog.eligible_domain
+     , goog.pin
+     , goog.pin_date
+     From entity e
+Left Join nu_bio_t_google_email_acct goog
+     On e.id_number = goog.alum_id
+)
+
+Select deg.ID_NUMBER
+     , e.pref_mail_name
+     , deg.degrees_verbose
+     , deg.first_ksm_year
+     , deg.program
+     , pe.email_address
+     , pe.preferred_ind
+     , pe.NO_EMAIL_IND
+     , pe.No_contact
+     , gab.short_desc AS GAB_Desc
+     , gab.status AS GAB_Status
+     , Trustee.id_number AS Trustee_ID
+     , Trustee.role As Trustee_Role
+     , Trustee_Sp.Trustee_Spouse
+     , asia.committee_status_code As Asia_Exec_Board_Status
+     , asia.Committee As Asia_Exec_Board
+     , fs.KSM_Faculty_or_Staff
+     , sh.no_contact
+     , sh.no_email_ind
+     , e.pref_mail_name
+     , goo.Alum_Email_Check
+     , goo.CATx_bday
+     , goo.alum_id
+     , goo.first_name
+     , goo.last_name
+     , goo.birth_month
+     , goo.birth_year
+     , goo.graduation_year
+     , goo.account_username
+     , goo.account_domain
+     , goo.email_address
+     , goo.eligible_domain
+     , goo.pin
+     , goo.pin_date
+From entity e
+Left Join pref_email pe
+     On pe.id_number = e.id_number
+Left join rpt_pbh634.v_entity_ksm_degrees deg
+     On deg.id_number = e.id_number
+Left Join facstaff fs
+     On fs.id_number = e.id_number
+Left Join Asia
+     On asia.id_number = e.id_number
+Left Join GAB
+     On GAB.id_number = e.id_number
+Left Join trustee
+     On trustee.id_number = e.id_number
+Left Join Trustee_Sp
+     On Trustee_Sp.Trustee_Spouse = e.id_number
+Left Join RPT_PBH634.v_entity_special_handling sh
+     On sh.id_number = e.id_number
+Left Join Google Goo
+     On Goo.id_number = e.id_number
+Where e.id_number = ('enter IDs') --- Drop ExecEd entity IDs here
