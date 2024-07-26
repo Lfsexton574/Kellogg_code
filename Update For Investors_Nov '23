@@ -1,0 +1,647 @@
+"WITH
+pref_email As (
+Select em.id_number
+     , em.email_address
+     , em.preferred_ind
+     , shc.NO_EMAIL_IND
+     , shc.No_contact
+From Email em
+Left Join rpt_pbh634.v_entity_special_handling SHC
+     on em.id_number = shc.id_number
+Where em.email_status_code = 'A'
+And em.preferred_ind = 'Y'
+And shc.NO_EMAIL_IND is NULL
+And shc.No_contact is NULL
+),
+
+
+Trustee_Sp As (
+    Select trusp.id_number
+         , trusp.Spouse_id_number As Trustee_Spouse
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) trusp
+)
+,
+
+facstaff As ( -- Based on NU_RPT_PKG_SCHOOL_TRANSACTION
+Select Distinct af.id_number
+              , tms_affil.short_desc As KSM_Faculty_or_Staff
+From Affiliation af
+Inner Join tms_affiliation_level tms_affil
+      On af.affil_level_code = tms_affil.affil_level_code
+Where af.affil_level_code In ('ES', 'EF') -- Staff, Faculty
+And af.affil_status_code = 'C'
+And af.affil_code = 'KM'
+)
+,
+
+KSM_1k_DONORS AS (
+Select distinct id_number
+     , ngc_lifetime
+     , ngc_cfy
+     , ngc_pfy1
+     , ngc_pfy2
+     , ngc_pfy3
+     , ngc_pfy4
+     , ngc_pfy5
+From RPT_PBH634.V_KSM_GIVING_SUMMARY
+Where (NGC_CFY > 1000
+Or NGC_PFY1 > 1000
+Or NGC_PFY2 > 1000)
+)
+,
+
+KCD As (
+Select gift_club_id_number
+     , gift_club_code
+     , gift_club_status
+From gift_clubs
+Where gift_club_code = 'KCD'
+And gift_club_status = 'A'
+)
+,
+
+LGOCon As (
+Select DISTINCT
+       assig.id_number
+     , pe.prospect_ID
+     , assig.assignment_id_number
+     , e.pref_mail_name
+From assignment assig
+Inner Join tms_assignment_type tmsa
+     On assig.assignment_type = tmsa.assignment_type
+Inner Join entity e
+     On assig.assignment_id_number = e.id_number
+Inner Join prospect_entity pe
+     On assig.id_number = pe.id_number
+Left Join tms_office tmso
+     On assig.office_code = tmso.office_code
+Where assig.assignment_type = 'LG'
+)
+,
+
+
+LGO As (
+  Select Distinct
+      id_number
+    , prospect_ID
+    , Listagg(assignment_id_number, ';  ') Within Group (Order By assignment_id_number) As LGO_IDs
+    , Listagg(pref_mail_name, ';  ') Within Group (Order By assignment_id_number) As LGOs
+  From ( -- Dedupe prospect IDs with multiple associated entities
+    Select Distinct
+        id_number
+      , prospect_ID
+      , assignment_id_number
+      , pref_mail_name
+    From LGOCon
+  )
+  Group By id_number, prospect_ID
+)
+,
+
+Boards As (
+Select distinct comm.id_number
+     , Listagg(comm.committee_code, ';  ') Within Group (Order By comm.committee_code) As Comittee_Code
+     , Listagg(tmsc.short_desc, ';  ') Within Group (Order By comm.committee_code) As Boards
+     , Listagg(comm.COMMITTEE_STATUS_CODE, ';  ') Within Group (Order By comm.committee_code) As Comm_Status
+     , Listagg(comm.COMMITTEE_role_code, ';  ') Within Group (Order By comm.committee_code) As Comm_Role
+From Committee Comm
+Inner Join tms_committee_table tmsc
+      On tmsc.committee_code = comm.committee_code
+Where comm.Committee_Code In ('KEBA', 'KAMP', 'KREAC', 'KPETC', 'APEAC', 'HAK')
+And comm.COMMITTEE_STATUS_CODE = 'C'
+Group by comm.id_number
+)
+,
+
+KAC As (
+Select comm.id_number
+     , comm.committee_code
+     , tmsc.short_desc As KAC
+     , comm.COMMITTEE_STATUS_CODE
+     , comm.COMMITTEE_role_code
+From Committee Comm
+Inner Join tms_committee_table tmsc
+      On tmsc.committee_code = comm.committee_code
+Where comm.Committee_Code = 'KACNA'
+And comm.COMMITTEE_STATUS_CODE = 'C'
+)
+,
+
+PLANNED_GIVING1 AS (
+SELECT DISTINCT
+  HH.ID_NUMBER
+FROM rpt_pbh634.v_ksm_giving_trans_hh HH
+INNER JOIN ENTITY E
+ON HH.ID_NUMBER = E.ID_NUMBER
+WHERE HH.TRANSACTION_TYPE_CODE IN ('31', '32', '33', '35', '36', '37')
+   AND E.RECORD_STATUS_CODE <> 'D'
+   AND E.PERSON_OR_ORG = 'P'
+)
+
+
+
+,PLANNED_GIVING2 AS (
+SELECT DISTINCT
+  HH.ID_NUMBER
+FROM rpt_pbh634.v_ksm_giving_trans_hh HH
+INNER JOIN ENTITY E
+ON HH.""ID_NUMBER"" = E.ID_NUMBER
+WHERE (HH.ALLOCATION_CODE IN ('BE', 'LE') OR HH.TRANSACTION_TYPE_CODE IN ('BE', 'LE'))
+   AND E.RECORD_STATUS_CODE <> 'D'
+   AND E.PERSON_OR_ORG = 'P'
+   AND HH.""PLEDGE_STATUS"" = 'A'
+)
+
+,manual_dates As (
+SELECT
+  CURR_FY AS CFY
+  ,CURR_FY - 1 AS PFY1
+  ,CURR_FY-2 AS PFY2
+  ,CURR_FY-3 AS PFY3
+  ,CURR_FY_START
+  ,CURR_FY_START - 366 PFY1_START
+  ,CURR_FY_START - 731 PFY2_START
+  ,CURR_FY_START - 1096 PFY3_START
+  ,NEXT_FY_START-1 AS CURR_FY_END
+  ,NEXT_FY_START - 366 PFY1_END
+  ,NEXT_FY_START - 732 PFY2_END
+  ,NEXT_FY_START - 1096 PFY3_END
+FROM RPT_PBH634.V_CURRENT_CALENDAR
+)
+
+,GIVING_TRANS AS -- Slow subquery
+( SELECT *
+  FROM rpt_pbh634.v_ksm_giving_trans --WHERE ID_NUMBER IN ('0000414825','0000017911')
+),
+
+GIFT_CLUB AS
+(
+SELECT * FROM GIFT_CLUBS
+  WHERE (GIFT_CLUB_CODE = 'LKM'
+ -- AND GIFT_CLUB_STATUS = 'A'
+  AND OPERATOR_NAME = 'lrb324')
+  OR (GIFT_CLUB_CODE = 'LKM'
+ -- AND GIFT_CLUB_STATUS = 'A'
+  AND OPERATOR_NAME = 'abm1914')--added myself on 11/15 after adding someone for Bridget
+  OR (GIFT_CLUB_CODE = 'LKM'
+ -- AND GIFT_CLUB_STATUS = 'A'
+  AND GIFT_CLUB_REASON = 'KLC Recurring Gift Pledge')
+)
+
+/*Helps identify when the entity/spouse graduated and the program they were in.
+Later used to identify if they are standard KLC or recent grad KLC.*/
+,KSM_DEGREES AS (
+SELECT
+ID_NUMBER
+,PROG
+,YR
+FROM
+(select ID_NUMBER, max(prog) prog, max(yr) yr from
+((SELECT
+   ID_NUMBER
+   ,PROGRAM_GROUP AS PROG
+   ,FIRST_KSM_YEAR AS YR
+ FROM rpt_pbh634.v_entity_ksm_degrees)
+ UNION ALL
+ (SELECT
+   A.ID_NUMBER
+   ,RT.SHORT_DESC AS PROG
+   ,A.CLASS_YEAR AS YR
+   FROM AFFILIATION A
+   LEFT JOIN TMS_RECORD_TYPE RT
+   ON A.RECORD_TYPE_CODE = RT.record_type_code
+   WHERE A.affil_level_code like 'A%'
+     and   A.affil_status_code = 'E'
+     and   A.affil_code = 'KM'))
+ group by ID_NUMBER)
+),
+
+REUNION_YEAR AS (
+  SELECT
+    ID_NUMBER
+    ,CLASS_YEAR
+  FROM AFFILIATION A
+  WHERE A.AFFIL_CODE = 'KM'
+AND A.AFFIL_LEVEL_CODE = 'RG'
+)
+
+/*used later to determine if a person is KLC or not.  Totals come from adding
+CREDIT_AMOUNT from rpt_pbh634.v_ksm_giving_trans_hh
+Matches and Claims*/
+,CASH_ONLY AS (
+   SELECT
+     GT.ID_NUMBER
+     ,GT.TX_NUMBER
+     ,GT.FISCAL_YEAR
+     ,GT.ALLOCATION_CODE
+     ,GT.CREDIT_AMOUNT
+   FROM GIVING_TRANS GT -- Not using HHID
+   CROSS JOIN MANUAL_DATES MD
+   WHERE GT.TX_GYPM_IND NOT IN ('P','M')
+     AND (GT.AF_FLAG = 'Y' OR GT.CRU_FLAG = 'Y')
+     AND GT.FISCAL_YEAR IN (MD.CFY, MD.PFY1, MD.PFY2, MD.PFY3)
+)
+
+,MATCHES AS (
+   SELECT
+    GT.""ID_NUMBER""
+   ,GT.""MATCHED_TX_NUMBER"" RCPT
+   ,GT.ALLOCATION_CODE ALLOC
+   ,SUM(GT.""CREDIT_AMOUNT"") MTCH
+    FROM GIVING_TRANS GT -- Not using HHID
+    CROSS JOIN MANUAL_DATES MD
+     WHERE GT.TX_GYPM_IND = 'M'
+       AND (GT.AF_FLAG = 'Y' OR GT.CRU_FLAG = 'Y')
+       AND GT.MATCHED_FISCAL_YEAR IN (MD.CFY, MD.PFY1, MD.PFY2, MD.PFY3)
+    GROUP BY GT.""ID_NUMBER"", GT.""MATCHED_TX_NUMBER"", GT.ALLOCATION_CODE
+)
+
+,CLAIMS AS (
+    SELECT
+      GT.ID_NUMBER
+      ,GT.""TX_NUMBER"" RCPT
+      ,GT.ALLOCATION_CODE ALLOC
+      ,SUM(MC.CLAIM_AMOUNT) CLAIM
+      FROM GIVING_TRANS GT -- Not using HHID
+      CROSS JOIN MANUAL_DATES MD
+      LEFT JOIN MATCHING_CLAIM MC
+        ON GT.TX_NUMBER = MC.CLAIM_GIFT_RECEIPT_NUMBER
+        AND GT.ALLOCATION_CODE = MC.ALLOCATION_CODE
+      WHERE (GT.AF_FLAG = 'Y' OR GT.CRU_FLAG = 'Y')
+        AND GT.FISCAL_YEAR IN (MD.CFY, MD.PFY1, MD.PFY2, MD.PFY3)
+      GROUP BY GT.ID_NUMBER, GT.TX_NUMBER, GT.ALLOCATION_CODE
+)
+
+,KGF_REWORKED AS (
+    select ID
+    ,SUM(CASE WHEN FY= MD.PFY3 THEN AMT ELSE 0 END) tot_kgifts_PFY3
+    ,SUM(CASE WHEN FY= MD.PFY2 THEN AMT ELSE 0 END) tot_kgifts_PFY2
+    ,SUM(case when FY =  MD.PFY1 then AMT else 0 end) tot_kgifts_PFY1
+    ,SUM(case when FY =  MD.CFY then AMT else 0 end) tot_kgifts_CFY
+    FROM (
+       SELECT
+        HH.ID_NUMBER ID
+       ,HH.TX_NUMBER RCPT
+       ,HH.FISCAL_YEAR FY
+       ,(HH.CREDIT_AMOUNT+ nvl(MTC.mtch,0)+ nvl(clm.claim,0)) AMT
+       FROM CASH_ONLY HH
+       CROSS JOIN MANUAL_DATES MD
+       LEFT JOIN MATCHES MTC
+        ON HH.""ID_NUMBER"" = MTC.ID_NUMBER
+        AND HH.""TX_NUMBER"" = MTC.RCPT
+        AND HH.ALLOCATION_CODE = MTC.ALLOC
+       LEFT JOIN CLAIMS CLM
+        ON HH.""ID_NUMBER"" = CLM.ID_NUMBER
+        AND HH.""TX_NUMBER"" = CLM.RCPT
+        AND HH.""ALLOCATION_CODE"" = CLM.ALLOC
+        WHERE HH.FISCAL_YEAR IN (MD.CFY,MD.PFY1, MD.PFY2, MD.PFY3))
+     CROSS JOIN MANUAL_DATES MD
+      GROUP BY ID
+)
+
+,PAYFY22 as
+(select plg.id,
+        sum(plg.prop * sc.payment_schedule_balance) pay,
+        sum(case when plg.af = 'Y'
+            then plg.prop * sc.payment_schedule_balance else 0 end) payaf
+ from payment_schedule sc
+ CROSS JOIN MANUAL_DATES MD,
+ (select p.pledge_donor_id ID,
+         pp.prim_pledge_number plg,
+         p.pledge_allocation_name alloc,
+         al.annual_sw AF,
+         p.pledge_associated_credit_amt / pp.prim_pledge_amount prop
+  from primary_pledge pp,
+       pledge p,
+       allocation al
+  where p.pledge_pledge_number = pp.prim_pledge_number
+  and   p.pledge_allocation_name = al.allocation_code
+  and   al.alloc_school = 'KM'
+  and   pp.prim_pledge_status = 'A') plg
+ where plg.plg = sc.payment_schedule_pledge_nbr
+ and   sc.payment_schedule_status = 'U'
+ and   RPT_PBH634.KSM_PKG_TMP.to_date2(sc.payment_schedule_date,'YYYYMMDD') between MD.PFY2_START
+           and MD.PFY2_END
+ group by plg.id)
+
+,PAYFY23 as
+(select plg.id,
+        sum(plg.prop * sc.payment_schedule_balance) pay,
+        sum(case when plg.af = 'Y'
+            then plg.prop * sc.payment_schedule_balance else 0 end) payaf
+ from payment_schedule sc
+ CROSS JOIN MANUAL_DATES MD,
+ (select p.pledge_donor_id ID,
+         pp.prim_pledge_number plg,
+         p.pledge_allocation_name alloc,
+         al.annual_sw AF,
+         p.pledge_associated_credit_amt / pp.prim_pledge_amount prop
+  from primary_pledge pp,
+       pledge p,
+       allocation al
+  where p.pledge_pledge_number = pp.prim_pledge_number
+  and   p.pledge_allocation_name = al.allocation_code
+  and   al.alloc_school = 'KM'
+  and   pp.prim_pledge_status = 'A') plg
+ where plg.plg = sc.payment_schedule_pledge_nbr
+ and   sc.payment_schedule_status = 'U'
+ and   RPT_PBH634.KSM_PKG_TMP.to_date2(sc.payment_schedule_date,'YYYYMMDD') between MD.PFY1_START
+           and MD.PFY1_END
+ group by plg.id)
+
+ ,PAYFY24 as
+(select plg.id,
+        sum(plg.prop * sc.payment_schedule_balance) pay,
+        sum(case when plg.af = 'Y'
+            then plg.prop * sc.payment_schedule_balance else 0 end) payaf
+ from payment_schedule sc
+ CROSS JOIN MANUAL_DATES MD,
+ (select p.pledge_donor_id ID,
+         pp.prim_pledge_number plg,
+         p.pledge_allocation_name alloc,
+         al.annual_sw AF,
+         p.pledge_associated_credit_amt / pp.prim_pledge_amount prop
+  from primary_pledge pp,
+       pledge p,
+       allocation al
+  where p.pledge_pledge_number = pp.prim_pledge_number
+  and   p.pledge_allocation_name = al.allocation_code
+  and   al.alloc_school = 'KM'
+  and   pp.prim_pledge_status = 'A') plg
+ where plg.plg = sc.payment_schedule_pledge_nbr
+ and   sc.payment_schedule_status = 'U'
+ and   RPT_PBH634.KSM_PKG_TMP.to_date2(sc.payment_schedule_date,'YYYYMMDD') between MD.CURR_FY_START
+           and MD.CURR_FY_END
+ group by plg.id)
+
+,KLC_MEMBERS_FY22 AS (
+   SELECT E.ID_NUMBER
+   ,CASE WHEN NVL(KGFR.TOT_KGIFTS_PFY3,0) >=2500 THEN 'Standard KLC Member'
+        WHEN NVL(KGFR.TOT_KGIFTS_PFY2,0)+NVL(PAY22.PAYAF,0) >= 2500 THEN 'Standard KLC Member'
+        when (KD.""YR"" between '2016' and '2021') AND
+             nvl(KGFR.tot_kgifts_pfy2,0) >= 1000 THEN 'Recent Grad KLC Member'
+         WHEN (KD.""YR"" between '2017' and '2022') AND
+             nvl(KGFR.tot_kgifts_pfy2,0) >= 1000 THEN 'Recent Grad KLC Member'
+        WHEN E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER THEN 'Manual Add'
+       END SEGMENT
+     FROM ENTITY E
+    CROSS JOIN MANUAL_DATES MD
+    LEFT JOIN KGF_REWORKED KGFR
+    ON E.ID_NUMBER = KGFR.ID
+    LEFT JOIN KSM_DEGREES KD
+    ON E.ID_NUMBER = KD.ID_NUMBER
+    LEFT JOIN GIFT_CLUB GC
+    ON E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER
+    LEFT JOIN PAYFY22 PAY22
+    ON E.ID_NUMBER = PAY22.ID
+    WHERE (E.person_or_org = 'P'
+  AND E.record_status_code not in ('I','X','D') -- No inactive, purgable, or deceased
+  AND ((nvl(KGFR.tot_kgifts_PFY3,0) >= 2500) or -- Gave $2500 last year
+      (nvl(KGFR.tot_kgifts_PFY2,0) >= 2500) or -- Gave $2500 this year, including future pledge payments
+      (nvl(KGFR.tot_kgifts_PFY3,0)>= 1000 AND KD.YR BETWEEN MD.PFY3-5 AND MD.PFY3) OR -- Young alumni
+      (nvl(KGFR.tot_kgifts_PFY3,0)>= 1000 AND KD.PROG = 'Student')OR -- Current students
+      (nvl(KGFR.tot_kgifts_PFY2,0) >= 1000 and KD.YR between MD.PFY2-5 and MD.PFY2)OR -- Young alumni plus future pledge payment
+      (nvl(KGFR.tot_kgifts_PFY2,0) >= 1000 AND KD.PROG = 'Student')))
+  OR (RPT_PBH634.KSM_PKG_TMP.to_date2(GC.GIFT_CLUB_START_DATE , 'MM-DD-YY') >= RPT_PBH634.KSM_PKG_TMP.to_date2('9/01/2021','MM-DD-YY')
+         AND RPT_PBH634.KSM_PKG_TMP.TO_DATE2(GC.GIFT_CLUB_END_DATE, 'MM-DD-YY') < RPT_PBH634.KSM_PKG_TMP.to_date2('9/01/2022','MM-DD-YY'))
+)
+
+,KLC_MEMBERS_FY23 AS (
+   SELECT E.ID_NUMBER
+   ,CASE WHEN NVL(KGFR.TOT_KGIFTS_PFY2,0) >=2500 THEN 'Standard KLC Member'
+        WHEN NVL(KGFR.TOT_KGIFTS_PFY1,0)+NVL(PAY23.PAYAF,0) >= 2500 THEN 'Standard KLC Member'
+        when (KD.""YR"" between '2017' and '2022') AND
+             nvl(KGFR.tot_kgifts_pfy2,0) >= 1000 THEN 'Recent Grad KLC Member'
+         WHEN (KD.""YR"" between '2018' and '2023') AND
+             nvl(KGFR.tot_kgifts_pfy1,0) >= 1000 THEN 'Recent Grad KLC Member'
+        WHEN E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER THEN 'Manual Add'
+       END SEGMENT
+     FROM ENTITY E
+    CROSS JOIN MANUAL_DATES MD
+    LEFT JOIN KGF_REWORKED KGFR
+    ON E.ID_NUMBER = KGFR.ID
+    LEFT JOIN KSM_DEGREES KD
+    ON E.ID_NUMBER = KD.ID_NUMBER
+    LEFT JOIN GIFT_CLUB GC
+    ON E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER
+    LEFT JOIN PAYFY23 PAY23
+    ON E.ID_NUMBER = PAY23.ID
+    WHERE (E.person_or_org = 'P'
+  AND E.record_status_code not in ('I','X','D') -- No inactive, purgable, or deceased
+  AND ((nvl(KGFR.tot_kgifts_PFY2,0) >= 2500) or -- Gave $2500 last year
+      (nvl(KGFR.tot_kgifts_PFY1,0) >= 2500) or -- Gave $2500 this year, including future pledge payments
+      (nvl(KGFR.tot_kgifts_PFY2,0)>= 1000 AND RPT_PBH634.KSM_PKG_TMP.to_number2(KD.YR) BETWEEN MD.PFY2-5 AND MD.PFY2) OR -- Young alumni
+      (nvl(KGFR.tot_kgifts_PFY2,0)>= 1000 AND KD.PROG = 'Student')OR -- Current students
+      (nvl(KGFR.tot_kgifts_PFY1,0) >= 1000 and RPT_PBH634.KSM_PKG_TMP.to_number2(KD.YR) between MD.PFY1-5 and MD.PFY1)OR -- Young alumni plus future pledge payment
+      (nvl(KGFR.tot_kgifts_PFY1,0) >= 1000 AND KD.PROG = 'Student')))
+  OR (RPT_PBH634.KSM_PKG_TMP.to_date2(GC.GIFT_CLUB_START_DATE , 'MM-DD-YY') >= RPT_PBH634.KSM_PKG_TMP.to_date2('9/01/2022','MM-DD-YY')
+         AND RPT_PBH634.KSM_PKG_TMP.TO_DATE2(GC.GIFT_CLUB_END_DATE, 'MM-DD-YY') < RPT_PBH634.KSM_PKG_TMP.to_date2('9/01/2023','MM-DD-YY'))
+)
+
+
+
+,KLC_MEMBERS_FY24 AS (
+   SELECT E.ID_NUMBER
+   ,CASE WHEN NVL(KGFR.TOT_KGIFTS_PFY1,0) >=2500 THEN 'Standard KLC Member'
+        WHEN NVL(KGFR.TOT_KGIFTS_CFY,0)+NVL(PAY24.PAYAF,0) >= 2500 THEN 'Standard KLC Member'
+        when ((RPT_PBH634.KSM_PKG_TMP.to_number2(KD.YR)) between '2018' and '2023') AND
+             nvl(KGFR.tot_kgifts_pfy1,0) >= 1000 THEN 'Recent Grad KLC Member'
+         WHEN ((RPT_PBH634.KSM_PKG_TMP.to_number2(KD.YR)) between '2019' and '2024' OR  KD.PROG = 'Student') AND
+             nvl(KGFR.tot_kgifts_cfy,0) >= 1000 THEN 'Recent Grad KLC Member'
+        WHEN E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER THEN 'Manual Add'
+       END SEGMENT
+     FROM ENTITY E
+    CROSS JOIN MANUAL_DATES MD
+    LEFT JOIN KGF_REWORKED KGFR
+    ON E.ID_NUMBER = KGFR.ID
+    LEFT JOIN KSM_DEGREES KD
+    ON E.ID_NUMBER = KD.ID_NUMBER
+    LEFT JOIN GIFT_CLUB GC
+    ON E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER
+    LEFT JOIN PAYFY24 PAY24
+    ON E.ID_NUMBER = PAY24.ID
+    WHERE (E.person_or_org = 'P'
+  AND E.record_status_code not in ('I','X','D') -- No inactive, purgable, or deceased
+  AND ((nvl(KGFR.tot_kgifts_PFY1,0) >= 2500) or -- Gave $2500 last year
+      (nvl(KGFR.tot_kgifts_CFY,0) >= 2500) or -- Gave $2500 this year, including future pledge payments
+      (nvl(KGFR.tot_kgifts_PFY1,0)>= 1000 AND RPT_PBH634.KSM_PKG_TMP.to_number2(KD.YR) BETWEEN MD.PFY1-5 AND MD.PFY1) OR -- Young alumni
+      (nvl(KGFR.tot_kgifts_PFY1,0)>= 1000 AND KD.PROG = 'Student')OR -- Current students
+      (nvl(KGFR.tot_kgifts_CFY,0) >= 1000 and RPT_PBH634.KSM_PKG_TMP.to_number2(KD.YR) between MD.CFY-5 and MD.CFY)OR -- Young alumni plus future pledge payment
+      (nvl(KGFR.tot_kgifts_CFY,0) >= 1000 AND KD.PROG = 'Student')))
+  OR (RPT_PBH634.KSM_PKG_TMP.to_date2(GC.GIFT_CLUB_START_DATE , 'MM-DD-YY') >= RPT_PBH634.KSM_PKG_TMP.to_date2('9/01/2023','MM-DD-YY')
+         AND RPT_PBH634.KSM_PKG_TMP.TO_DATE2(GC.GIFT_CLUB_END_DATE, 'MM-DD-YY') < RPT_PBH634.KSM_PKG_TMP.to_date2('9/01/2024','MM-DD-YY'))
+)
+
+,KELLOGG_TRUSTEES AS (
+SELECT DISTINCT
+ T.ID_NUMBER
+FROM TABLE(RPT_PBH634.KSM_PKG_TMP.tbl_committee_trustee) T
+INNER JOIN RPT_PBH634.V_ENTITY_KSM_DEGREES KD
+ON T.ID_NUMBER = KD.""ID_NUMBER""
+
+)
+
+
+
+,GAB AS (
+SELECT DISTINCT
+  G.ID_NUMBER
+FROM TABLE(RPT_PBH634.KSM_PKG_TMP.tbl_committee_gab) G
+INNER JOIN RPT_PBH634.V_ENTITY_KSM_DEGREES KD
+ON G.ID_NUMBER = KD.""ID_NUMBER""
+
+)
+,
+
+Spouse As (
+Select e.id_number
+     , e.spouse_id_number
+     , es.pref_mail_name As Spouse_Name
+     , kd.degrees_concat
+From entity e
+Inner Join RPT_PBH634.V_ENTITY_KSM_DEGREES KD
+ON e.spouse_id_number = KD.ID_NUMBER
+Inner Join entity es
+ON e.spouse_id_number = es.ID_NUMBER
+Where e.spouse_id_number Is Not Null
+)
+,
+
+FINAL_IDS AS (
+SELECT
+  ID_NUMBER
+FROM KSM_1k_DONORS
+UNION
+SELECT
+  ID_NUMBER
+FROM PLANNED_GIVING1
+UNION
+SELECT
+  ID_NUMBER
+FROM PLANNED_GIVING2
+UNION
+SELECT
+  ID_NUMBER
+FROM Boards
+UNION
+Select
+  ID_NUMBER
+From KELLOGG_TRUSTEES
+UNION
+Select
+  ID_NUMBER
+From GAB
+UNION
+Select
+  ID_NUMBER
+From KAC
+)
+
+SELECT distinct
+  E.ID_NUMBER
+  ,KHH.""HOUSEHOLD_ID""
+  ,KHH.""HOUSEHOLD_PRIMARY""
+  ,E.FIRST_NAME
+  ,E.LAST_NAME
+  ,WT0_PKG.GetDeansSal(E.ID_NUMBER, 'KM') DEANS_SALUTATION
+  , nt.NU_DEGREES_STRING As Nametag_Degree_Yrs
+  ,KD.""FIRST_KSM_YEAR""
+  ,KD.""DEGREES_CONCAT""
+  ,Sps.spouse_id_number
+  ,Sps.Spouse_Name
+  , nts.NU_DEGREES_STRING As Sps_Nametag_Degree_Yrs
+  ,WT0_PKG.GetDeansSal(Sps.Spouse_id_number, 'KM') Sps_DEANS_SALUTATION
+  ,P.PROSPECT_MANAGER
+  , LGO.LGO_IDs
+  , LGO.LGOs
+  ,KGS.""NGC_LIFETIME_FULL_REC"" AS KELLOGG_LT_NGC
+  ,ONEK.ngc_cfy
+  ,ONEK.ngc_pfy1
+  ,ONEK.ngc_pfy2
+  ,ONEK.ngc_pfy3
+  ,ONEK.ngc_pfy4
+  ,ONEK.ngc_pfy5
+  ,A.city As Pref_City
+  ,A.STATE_CODE AS PREF_STATE
+  ,A.COUNTRY_CODE AS PREF_COUNTRY
+  ,CASE WHEN EM.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Pref_Email""
+  ,CASE WHEN SEM.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Sps_Pref_Email""
+  ,SH.""SPECIAL_HANDLING_CONCAT""
+  ,SH.""NO_CONTACT""
+  ,SH.""NO_EMAIL_IND""
+  ,SHS.""SPECIAL_HANDLING_CONCAT"" As Sps_SHC
+  ,SHS.""NO_CONTACT"" As Sps_No_Contact
+  ,SHS.""NO_EMAIL_IND"" As Sps_No_Email
+  ,Comm.Boards
+  , KAC.KAC
+  ,CASE WHEN ONEK.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""1K+ CFY_PFY1_PFY2 Donor""
+  ,CASE WHEN PG1.ID_NUMBER IS NOT NULL OR PG2.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Planned Giving Donor""
+  ,CASE WHEN KT.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Kellogg Trustee""
+  ,CASE WHEN Trustee_Sp.Trustee_Spouse IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Kellogg Trustee Sps""
+  ,CASE WHEN G.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""GAB""
+  ,CASE WHEN KM24.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""KLC Member FY24""
+  ,CASE WHEN KM23.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""KLC Member FY23""
+  ,CASE WHEN KM22.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""KLC Member FY22""
+  ,CASE WHEN KCD.gift_club_id_number IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Active Cornerstone Member""
+  , fs.KSM_Faculty_or_Staff
+
+
+FROM ENTITY E
+INNER JOIN FINAL_IDS FI
+      ON E.ID_NUMBER = FI.ID_NUMBER
+LEFT JOIN RPT_PBH634.V_ENTITY_KSM_HOUSEHOLDS KHH
+     ON FI.ID_NUMBER = KHH.ID_NUMBER
+LEFT JOIN RPT_PBH634.V_ENTITY_KSM_DEGREES KD
+     ON FI.ID_NUMBER = KD.ID_NUMBER
+LEFT JOIN NU_PRS_TRP_PROSPECT P
+     ON E.ID_NUMBER = P.ID_NUMBER
+LEFT JOIN ADDRESS A
+     ON FI.ID_NUMBER = A.ID_NUMBER
+        AND A.ADDR_PREF_IND = 'Y'
+        AND A.ADDR_STATUS_CODE = 'A'
+LEFT JOIN  RPT_PBH634.V_KSM_GIVING_SUMMARY KGS
+     ON FI.ID_NUMBER = KGS.ID_NUMBER
+LEFT JOIN RPT_PBH634.V_ENTITY_SPECIAL_HANDLING SH
+     ON FI.ID_NUMBER = SH.ID_NUMBER
+LEFT JOIN KSM_1k_DONORS ONEk
+     ON FI.ID_NUMBER = ONEk.ID_NUMBER
+LEFT JOIN PLANNED_GIVING1 PG1
+     ON FI.ID_NUMBER = PG1.ID_NUMBER
+LEFT JOIN PLANNED_GIVING2 PG2
+     ON FI.ID_NUMBER = PG2.ID_NUMBER
+LEFT JOIN KELLOGG_TRUSTEES KT
+     ON FI.ID_NUMBER = KT.ID_NUMBER
+LEFT JOIN GAB G
+     ON FI.ID_NUMBER = G.ID_NUMBER
+LEFT JOIN KLC_MEMBERS_FY22 KM22
+     ON FI.ID_NUMBER = KM22.ID_NUMBER
+LEFT JOIN KLC_MEMBERS_FY23 KM23
+     ON FI.ID_NUMBER = KM23.ID_NUMBER
+LEFT JOIN KLC_MEMBERS_FY24 KM24
+     ON FI.ID_NUMBER = KM24.ID_NUMBER
+Left Join KCD
+     ON FI.ID_NUMBER = KCD.gift_club_id_number
+Left Join LGO
+     On FI.ID_NUMBER = LGO.id_number
+Left Join Boards Comm
+     On FI.ID_NUMBER = Comm.id_number
+Left Join KAC
+     On FI.ID_NUMBER = KAC.id_number
+Left Join Spouse Sps
+     On FI.ID_NUMBER = Sps.id_number
+Left Join RPT_PBH634.V_ENTITY_NAMETAGS nt
+     On FI.ID_NUMBER = nt.id_number
+Left Join RPT_PBH634.V_ENTITY_NAMETAGS nts
+     On nts.ID_NUMBER = Sps.Spouse_id_number
+Left Join Trustee_Sp
+     On Trustee_Sp.id_number = FI.id_number
+Left Join facstaff fs
+     On fs.id_number = FI.id_number
+LEFT JOIN pref_email EM
+     ON FI.ID_NUMBER = EM.ID_NUMBER
+LEFT JOIN pref_email SEM
+     ON Sps.Spouse_id_number = SEM.ID_NUMBER
+LEFT JOIN RPT_PBH634.V_ENTITY_SPECIAL_HANDLING SHS
+     ON SH.ID_NUMBER = Sps.Spouse_id_number
+Where e.person_or_org = 'P'
+ORDER BY KHH.HOUSEHOLD_ID, KHH."HOUSEHOLD_PRIMARY" ASC
