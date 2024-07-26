@@ -244,22 +244,22 @@ Matches and Claims*/
 
 ,MATCHES AS (
    SELECT
-    GT.""ID_NUMBER""
-   ,GT.""MATCHED_TX_NUMBER"" RCPT
+    GT."ID_NUMBER"
+   ,GT."MATCHED_TX_NUMBER" RCPT
    ,GT.ALLOCATION_CODE ALLOC
-   ,SUM(GT.""CREDIT_AMOUNT"") MTCH
+   ,SUM(GT."CREDIT_AMOUNT") MTCH
     FROM GIVING_TRANS GT -- Not using HHID
     CROSS JOIN MANUAL_DATES MD
      WHERE GT.TX_GYPM_IND = 'M'
        AND (GT.AF_FLAG = 'Y' OR GT.CRU_FLAG = 'Y')
        AND GT.MATCHED_FISCAL_YEAR IN (MD.CFY, MD.PFY1, MD.PFY2, MD.PFY3)
-    GROUP BY GT.""ID_NUMBER"", GT.""MATCHED_TX_NUMBER"", GT.ALLOCATION_CODE
+    GROUP BY GT."ID_NUMBER", GT."MATCHED_TX_NUMBER", GT.ALLOCATION_CODE
 )
 
 ,CLAIMS AS (
     SELECT
       GT.ID_NUMBER
-      ,GT.""TX_NUMBER"" RCPT
+      ,GT."TX_NUMBER" RCPT
       ,GT.ALLOCATION_CODE ALLOC
       ,SUM(MC.CLAIM_AMOUNT) CLAIM
       FROM GIVING_TRANS GT -- Not using HHID
@@ -287,13 +287,13 @@ Matches and Claims*/
        FROM CASH_ONLY HH
        CROSS JOIN MANUAL_DATES MD
        LEFT JOIN MATCHES MTC
-        ON HH.""ID_NUMBER"" = MTC.ID_NUMBER
-        AND HH.""TX_NUMBER"" = MTC.RCPT
+        ON HH."ID_NUMBER" = MTC.ID_NUMBER
+        AND HH."TX_NUMBER" = MTC.RCPT
         AND HH.ALLOCATION_CODE = MTC.ALLOC
        LEFT JOIN CLAIMS CLM
-        ON HH.""ID_NUMBER"" = CLM.ID_NUMBER
-        AND HH.""TX_NUMBER"" = CLM.RCPT
-        AND HH.""ALLOCATION_CODE"" = CLM.ALLOC
+        ON HH."ID_NUMBER" = CLM.ID_NUMBER
+        AND HH."TX_NUMBER" = CLM.RCPT
+        AND HH."ALLOCATION_CODE" = CLM.ALLOC
         WHERE HH.FISCAL_YEAR IN (MD.CFY,MD.PFY1, MD.PFY2, MD.PFY3))
      CROSS JOIN MANUAL_DATES MD
       GROUP BY ID
@@ -378,9 +378,9 @@ Matches and Claims*/
    SELECT E.ID_NUMBER
    ,CASE WHEN NVL(KGFR.TOT_KGIFTS_PFY3,0) >=2500 THEN 'Standard KLC Member'
         WHEN NVL(KGFR.TOT_KGIFTS_PFY2,0)+NVL(PAY22.PAYAF,0) >= 2500 THEN 'Standard KLC Member'
-        when (KD.""YR"" between '2016' and '2021') AND
+        when (KD."YR" between '2016' and '2021') AND
              nvl(KGFR.tot_kgifts_pfy2,0) >= 1000 THEN 'Recent Grad KLC Member'
-         WHEN (KD.""YR"" between '2017' and '2022') AND
+         WHEN (KD."YR" between '2017' and '2022') AND
              nvl(KGFR.tot_kgifts_pfy2,0) >= 1000 THEN 'Recent Grad KLC Member'
         WHEN E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER THEN 'Manual Add'
        END SEGMENT
@@ -410,9 +410,9 @@ Matches and Claims*/
    SELECT E.ID_NUMBER
    ,CASE WHEN NVL(KGFR.TOT_KGIFTS_PFY2,0) >=2500 THEN 'Standard KLC Member'
         WHEN NVL(KGFR.TOT_KGIFTS_PFY1,0)+NVL(PAY23.PAYAF,0) >= 2500 THEN 'Standard KLC Member'
-        when (KD.""YR"" between '2017' and '2022') AND
+        when (KD."YR" between '2017' and '2022') AND
              nvl(KGFR.tot_kgifts_pfy2,0) >= 1000 THEN 'Recent Grad KLC Member'
-         WHEN (KD.""YR"" between '2018' and '2023') AND
+         WHEN (KD."YR" between '2018' and '2023') AND
              nvl(KGFR.tot_kgifts_pfy1,0) >= 1000 THEN 'Recent Grad KLC Member'
         WHEN E.ID_NUMBER = GC.GIFT_CLUB_ID_NUMBER THEN 'Manual Add'
        END SEGMENT
@@ -539,14 +539,14 @@ From KAC
 
 SELECT distinct
   E.ID_NUMBER
-  ,KHH.""HOUSEHOLD_ID""
-  ,KHH.""HOUSEHOLD_PRIMARY""
+  ,KHH."HOUSEHOLD_ID"
+  ,KHH."HOUSEHOLD_PRIMARY"
   ,E.FIRST_NAME
   ,E.LAST_NAME
   ,WT0_PKG.GetDeansSal(E.ID_NUMBER, 'KM') DEANS_SALUTATION
   , nt.NU_DEGREES_STRING As Nametag_Degree_Yrs
-  ,KD.""FIRST_KSM_YEAR""
-  ,KD.""DEGREES_CONCAT""
+  ,KD."FIRST_KSM_YEAR"
+  ,KD."DEGREES_CONCAT"
   ,Sps.spouse_id_number
   ,Sps.Spouse_Name
   , nts.NU_DEGREES_STRING As Sps_Nametag_Degree_Yrs
@@ -554,7 +554,7 @@ SELECT distinct
   ,P.PROSPECT_MANAGER
   , LGO.LGO_IDs
   , LGO.LGOs
-  ,KGS.""NGC_LIFETIME_FULL_REC"" AS KELLOGG_LT_NGC
+  ,KGS."NGC_LIFETIME_FULL_REC" AS KELLOGG_LT_NGC
   ,ONEK.ngc_cfy
   ,ONEK.ngc_pfy1
   ,ONEK.ngc_pfy2
@@ -564,25 +564,25 @@ SELECT distinct
   ,A.city As Pref_City
   ,A.STATE_CODE AS PREF_STATE
   ,A.COUNTRY_CODE AS PREF_COUNTRY
-  ,CASE WHEN EM.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Pref_Email""
-  ,CASE WHEN SEM.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Sps_Pref_Email""
-  ,SH.""SPECIAL_HANDLING_CONCAT""
-  ,SH.""NO_CONTACT""
-  ,SH.""NO_EMAIL_IND""
-  ,SHS.""SPECIAL_HANDLING_CONCAT"" As Sps_SHC
-  ,SHS.""NO_CONTACT"" As Sps_No_Contact
-  ,SHS.""NO_EMAIL_IND"" As Sps_No_Email
+  ,CASE WHEN EM.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "Pref_Email"
+  ,CASE WHEN SEM.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "Sps_Pref_Email"
+  ,SH."SPECIAL_HANDLING_CONCAT"
+  ,SH."NO_CONTACT"
+  ,SH."NO_EMAIL_IND"
+  ,SHS."SPECIAL_HANDLING_CONCAT" As Sps_SHC
+  ,SHS."NO_CONTACT" As Sps_No_Contact
+  ,SHS."NO_EMAIL_IND" As Sps_No_Email
   ,Comm.Boards
   , KAC.KAC
-  ,CASE WHEN ONEK.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""1K+ CFY_PFY1_PFY2 Donor""
-  ,CASE WHEN PG1.ID_NUMBER IS NOT NULL OR PG2.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Planned Giving Donor""
-  ,CASE WHEN KT.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Kellogg Trustee""
-  ,CASE WHEN Trustee_Sp.Trustee_Spouse IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Kellogg Trustee Sps""
-  ,CASE WHEN G.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""GAB""
-  ,CASE WHEN KM24.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""KLC Member FY24""
-  ,CASE WHEN KM23.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""KLC Member FY23""
-  ,CASE WHEN KM22.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS ""KLC Member FY22""
-  ,CASE WHEN KCD.gift_club_id_number IS NOT NULL THEN 'Y' ELSE ' ' END AS ""Active Cornerstone Member""
+  ,CASE WHEN ONEK.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "1K+ CFY_PFY1_PFY2 Donor"
+  ,CASE WHEN PG1.ID_NUMBER IS NOT NULL OR PG2.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "Planned Giving Donor"
+  ,CASE WHEN KT.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "Kellogg Trustee"
+  ,CASE WHEN Trustee_Sp.Trustee_Spouse IS NOT NULL THEN 'Y' ELSE ' ' END AS "Kellogg Trustee Sps"
+  ,CASE WHEN G.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "GAB"
+  ,CASE WHEN KM24.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "KLC Member FY24"
+  ,CASE WHEN KM23.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "KLC Member FY23"
+  ,CASE WHEN KM22.ID_NUMBER IS NOT NULL THEN 'Y' ELSE ' ' END AS "KLC Member FY22"
+  ,CASE WHEN KCD.gift_club_id_number IS NOT NULL THEN 'Y' ELSE ' ' END AS "Active Cornerstone Member"
   , fs.KSM_Faculty_or_Staff
 
 
