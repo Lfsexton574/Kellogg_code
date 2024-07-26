@@ -1,4 +1,4 @@
-"WITH
+WITH
 pref_email As (
 Select em.id_number
      , em.email_address
