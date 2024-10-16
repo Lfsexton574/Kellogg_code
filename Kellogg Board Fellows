@@ -1,4 +1,4 @@
-With KBF As (
+With KBF_CATx As (
 Select id_number
      , student_activity_code
      , student_particip_code
@@ -12,18 +12,36 @@ And xcomment Not Like 'Declined%'
 )
 ,
 
+new_KBF As (
+Select id_number
+     , pref_mail_name
+From entity e
+Where id_number In ('0000600713', '0000870764', '0000873032', '0000881471', '0000869861', '0000881449', '0000873104', '0000880196', '0000873098', '0000873069', '0000870818', '0000873234', '0000872977', '0000870800', '0000884510', '0000881332', '0000883970', '0000873045', '0000881293', '0000879827', '0000881434', '0000863554', '0000879688', '0000685691', '0000884496', '0000698808', '0000870882', '0000879782', '0000881329', '0000859885', '0000870967', '0000873121', '0000870586', '0000881281', '0000884166', '0000870247', '0000873047', '0000868626', '0000870911', '0000873230', '0000872974', '0000853727', '0000873244', '0000881381', '0000878418', '0000870597', '0000881331', '0000865334', '0000725789', '0000900981', '0000900981', '0000897195', '0000898673', '0000902172', '0000903766', '0000873127', '0000879681', '0000872936', '0000619247', '0000879503', '0000872990')
+)
+,
+
+KBF As (
+Select id_number
+From KBF_CATx
+Union
+Select id_number
+From new_KBF
+)
+,
+
 pref_email As (
 Select em.id_number
      , em.email_address
      , em.preferred_ind
---     , shc.NO_EMAIL_IND
---     , shc.No_contact
+     , shc.NO_EMAIL_IND
+     , shc.No_contact
 From Email em
---     on em.id_number = shc.id_number
+Inner Join rpt_pbh634.v_entity_special_handling SHC
+     On em.id_number = shc.id_number
 Where em.email_status_code = 'A'
 And em.preferred_ind = 'Y'
---And shc.NO_EMAIL_IND is NULL
---And shc.No_contact is NULL
+And shc.NO_EMAIL_IND is NULL
+And shc.No_contact is NULL
 ),
 
 GAB As (
@@ -79,12 +97,13 @@ Select KBF.id_number
      , deg.degrees_concat
      , deg.first_ksm_year
      , deg.program
-     , KBF.student_activity_code
-     , KBF.student_particip_code
-     , KBF.start_dt
-     , KBF.stop_dt
-     , KBF.date_added
-     , KBF.xcomment
+     , Case When new_KBF.id_number Is Not Null Then 'Y' Else '' End As "New_KBF"
+     , KBF_CATx.student_activity_code
+     , KBF_CATx.student_particip_code
+     , KBF_CATx.start_dt
+     , KBF_CATx.stop_dt
+     , KBF_CATx.date_added
+     , KBF_CATx.xcomment
      , pe.preferred_ind
 --     , pe.NO_EMAIL_IND
 --     , pe.No_contact
@@ -96,11 +115,15 @@ Select KBF.id_number
      , asia.committee_status_code As Asia_Exec_Board_Status
      , asia.Committee As Asia_Exec_Board
      , fs.KSM_Faculty_or_Staff
-     , sh.no_contact
-     , sh.no_email_ind
+     , pe.no_contact
+     , pe.no_email_ind
 From KBF
 Inner Join entity e
      On KBF.id_number = e.id_number
+Left Join KBF_CATx
+     On KBF.id_number = KBF_CATx.id_number
+Left Join new_KBF
+     On KBF.id_number = new_KBF.id_number
 Left Join rpt_pbh634.v_entity_ksm_degrees deg
      On KBF.id_number = deg.id_number
 Left Join pref_email pe
@@ -115,5 +138,3 @@ Left Join trustee
      On trustee.id_number = KBF.id_number
 Left Join Trustee_Sp
      On Trustee_Sp.Trustee_Spouse = KBF.id_number
-Left Join RPT_PBH634.v_entity_special_handling sh
-     On sh.id_number = KBF.id_number
