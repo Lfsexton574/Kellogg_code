@@ -1,3 +1,5 @@
+-- Must remove No Contact/No Email from list, as query with SHC in pref_email sub-query takes forever to run/doesn't complete
+
 With employ as (
 Select id_number
        , -- If there's an employer ID filled in, use the entity name
