@@ -1,0 +1,674 @@
+With employ As (
+Select emp.id_number
+     , emp.job_status_code
+     , emp.primary_emp_ind
+     , emp.employer_id_number
+     , eemp.pref_mail_name
+     , emp.employer_name1
+     , emp.employer_name2
+     , emp.job_title
+     , emp.fld_of_work_code
+     , tmse.short_desc As Fld_of_work
+     , emp.fld_of_spec_code1
+     , tmss.short_desc As Fld_of_spec
+     , emp.start_dt
+     , emp.xcomment
+From employment emp
+Left Join entity eemp
+      On eemp.id_number = emp.employer_id_number
+Left Join tms_fld_of_work tmse
+      On emp.fld_of_work_code = tmse.fld_of_work_code
+Left Join tms_fld_of_spec tmss
+      On emp.fld_of_spec_code1 = tmss.fld_of_spec_code
+Where emp.job_status_code = 'C'
+And emp.primary_emp_ind = 'Y'
+)
+
+
+,
+
+count_of_speakers as (
+SELECT distinct act.id_number
+       , count(act.activity_code) KSM_Speaker_Count
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KSP'
+And act.activity_participation_code = 'P'
+GROUP BY act.id_number
+)
+,
+
+count_of_Event_Host as (
+SELECT distinct act.id_number
+       , count(act.activity_code) KSM_Event_Host_Count
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KEH'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+count_of_KCorpRec as (
+SELECT distinct act.id_number
+       , count(act.activity_code) KSM_KCorpRec_Count
+From activity act
+Inner join tms_activity_table tmsat
+      On tmsat.activity_code = act.activity_code
+Where act.activity_code = 'KCR'
+And act.activity_participation_code = 'P'
+Group By act.id_number
+)
+,
+
+count_of_KStuAct as (
+SELECT distinct sa.id_number
+       , count(sa.student_activity_code) KSM_Stu_Act_Count
+From student_activity sa
+Inner Join tms_student_act tmssp
+      On tmssp.student_activity_code = sa.student_activity_code
+Where sa.student_activity_code In ('DAK', 'IKC', 'KSMT', 'KDKJS', 'KTC', 'KR', 'FFKDC', 'KSA36', 'KSB3', 'KSB33', 'KSA44', 'KSA51', 'KSA18', 'KSA93', 'KSB49', 'KSA98', 'KSB12', 'KSA54', 'KSB52', 'KSB25', 'KSB6', 'KSB51', 'KSA52', 'KSB56', 'KSA73', 'KSA74', 'KSB57', 'KSB40', 'KMSSA', 'KSA58', 'KSB41', 'KSB61', 'KSA86', 'KSA45', 'KSC', 'KSA84', 'KSB30', 'KVA', 'KSB81', 'KSA23', 'KSB14')
+Group By sa.id_number
+)
+,
+
+count_of_KAd_Caller as (
+SELECT distinct comm.id_number
+       , count(comm.committee_code) KSM_KAd_Caller_Count
+From committee comm
+Inner Join tms_committee_table tmscomm
+      On comm.committee_code = tmscomm.committee_code
+Inner Join tms_committee_status tmscommstat
+      On comm.committee_status_code = tmscommstat.committee_status_code
+Where comm.committee_code = 'KAAC'
+Group By comm.id_number
+)
+,
+
+count_of_K_Interviewers as (
+SELECT distinct comm.id_number
+       , count(comm.committee_code) KSM_Interviewer_Count
+From committee comm
+Inner Join tms_committee_table tmscomm
+      On comm.committee_code = tmscomm.committee_code
+Inner Join tms_committee_status tmscommstat
+      On comm.committee_status_code = tmscommstat.committee_status_code
+Where comm.committee_code = 'KOCCI'
+Group By comm.id_number
+)
+,
+
+KSM_Prop_Act As (
+Select prospect_id
+     , listagg(prospect_name, ', ') Within Group (Order By start_date ASC) as Proposal_Prospect
+     , listagg(proposal_id, ', ') Within Group (Order By start_date ASC) as Proposal_ID
+     , listagg(ksm_proposal_ind, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Ind
+     , listagg(probability, ', ') Within Group (Order By start_date ASC) as Proposal_Prob
+     , listagg(proposal_status, ', ') Within Group (Order By start_date ASC) as Proposal_Status
+     , listagg(proposal_active, ', ') Within Group (Order By start_date ASC) as Proposal_Active
+     , listagg(start_date, ', ') Within Group (Order By start_date ASC) as Proposal_Start_Dt
+     , listagg(ask_date, ', ') Within Group (Order By start_date ASC) as Proposal_Ask_Dt
+     , listagg(close_date, ', ') Within Group (Order By start_date ASC) as Proposal_Close_Dt
+     , listagg(proposal_title, ', ') Within Group (Order By start_date ASC) as Proposal_Title
+     , listagg(proposal_type, ', ') Within Group (Order By start_date ASC) as Proposal_Type
+     , listagg(total_original_ask_amt, ', ') Within Group (Order By start_date ASC) as Proposal_Orig_Ask_Amt
+     , listagg(total_anticipated_amt, ', ') Within Group (Order By start_date ASC) as Proposal_Ant_Amt
+     , listagg(ksm_ask, ', ') Within Group (Order By start_date ASC) as Proposal_KSM_Ask_Amt
+     , listagg(ksm_anticipated, ', ') Within Group (Order By start_date ASC) as Proposal_KSM_Ant_Amt
+     , listagg(proposal_manager, ', ') Within Group (Order By start_date ASC) as Proposal_Manager
+     , listagg(curr_ksm_proposal_manager, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Mgr
+     , listagg(curr_ksm_team, ', ') Within Group (Order By start_date ASC) as KSM_Proposal_Team
+     , listagg(proposal_assist, ', ') Within Group (Order By start_date ASC) as Proposal_Assist
+From RPT_PBH634.v_proposal_history_fast
+Where KSM_Proposal_ind = 'Y'
+And Proposal_Active = 'Y'
+Group By Prospect_ID
+),
+
+counts_of_proposal_statuses as (
+SELECT distinct pro.prospect_ID
+       ,pro.proposal_status
+       ,count(pro.proposal_id) n
+FROM RPT_PBH634.v_proposal_history_fast pro
+Where pro.KSM_Proposal_ind = 'Y'
+And pro.Proposal_Active = 'N'
+GROUP BY pro.prospect_ID, pro.proposal_status
+)
+,
+
+Proposal_Status_Join As 
+(Select distinct c.prospect_ID
+       , case when c.proposal_status = 'Withdrawn' Then n else 0 End As Withdrawn_Count
+       , case when c.proposal_status = 'Declined' Then n else 0 End As Declined_count
+       , case when c.proposal_status = 'Funded' Then n else 0 End As Funded_count
+       , case when c.proposal_status = 'Anticipated' Then n else 0 End As Anticipated_Count
+       , case when c.proposal_status = 'Decision Deferred' Then n else 0 End As Decision_Deferred_Count
+       , case when c.proposal_status = 'Deferred by Officer' Then n else 0 End As Deferred_by_Officer_Count
+       , case when c.proposal_status = 'Deferred by Prospect' Then n else 0 End As Deferred_by_Prospect_Count
+       , case when c.proposal_status = 'Pending Donor Response' Then n else 0 End As Pending_Donor_Response_Count
+       , case when c.proposal_status = 'Submitted' Then n else 0 End As Submitted_Count
+       , case when c.proposal_status = 'Approved by Donor' Then n else 0 End As Approved_Count
+From counts_of_proposal_statuses c
+Inner join nu_prs_trp_prospect pros
+      On pros.id_number = c.prospect_ID
+)
+,
+
+Closed_Prop_Status_Counts As
+(select distinct prospect_ID
+       , max(Withdrawn_Count) As ClosedProp_Withdrawn
+       , max(Declined_count) As ClosedProp_Declined
+       , max(Funded_count) As ClosedProp_Funded
+       , max(Anticipated_Count) As ClosedProp_Anticipated
+       , max(Decision_Deferred_Count) As ClosedProp_Decision_Deferred
+       , max(Deferred_by_Officer_Count) As ClosedProp_Def_by_Officer
+       , max(Deferred_by_Prospect_Count) As ClosedProp_Def_by_Prospect
+       , max(Pending_Donor_Response_Count) As ClosedProp_Pend_Donor_Resp
+       , max(Submitted_Count) As ClosedProp_Submitted
+       , max(Approved_Count) As ClosedProp_Approved
+from Proposal_Status_Join
+group by prospect_ID
+)
+,
+
+nonKSMdegrees As (
+Select deg.id_number
+     , listagg(deg.institution_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_School
+     , listagg(inst.institution_name, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_School_Name
+     , listagg(deg.degree_type, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Degree_Type
+     , listagg(deg.degree_level_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Degree_Level_Code
+     , listagg(tdl.short_desc, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Degree_Level
+     , listagg(deg.school_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_School_Code
+     , listagg(deg.campus_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Campus_Code
+     , listagg(camp.short_desc, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Campus
+     , listagg(deg.degree_year, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Degree_Year
+     , listagg(deg.financial_aid_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Fin_Aid
+     , listagg(deg.non_grad_code, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Non_Grad
+     , listagg(deg.date_modified, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Date_Mod
+     , listagg(deg.operator_name, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Operator_Name
+     , listagg(deg.xcomment, ', ') Within Group (Order By deg.degree_type ASC) As NonKSM_NUdeg_Comments
+From degrees deg
+Left Join institution inst
+      On deg.institution_code = inst.institution_code
+Left Join tms_degree_level tdl
+      On deg.degree_level_code = tdl.degree_level_code
+Left Join tms_campus camp
+      On deg.campus_code = camp.campus_code
+Where NOT deg.school_code Like 'BUS'
+AND NOT deg.school_code Like 'KSM'
+And deg.institution_code = '31173'
+Group By deg.id_number
+),
+
+nonNUdegrees As (
+Select deg.id_number
+     , listagg(deg.institution_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_School
+     , listagg(inst.institution_name, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_School_Name
+     , listagg(deg.degree_type, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Degree_Type
+     , listagg(deg.degree_level_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Degree_Level_Code
+     , listagg(tdl.short_desc, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Degree_Level
+     , listagg(deg.school_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_School_Code
+     , listagg(deg.campus_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Campus_Code
+     , listagg(camp.short_desc, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Campus
+     , listagg(deg.degree_year, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Degree_Year
+     , listagg(deg.financial_aid_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Fin_Aid
+     , listagg(deg.non_grad_code, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Non_Grad
+     , listagg(deg.date_modified, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Date_Mod
+     , listagg(deg.operator_name, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Operator_Name
+     , listagg(deg.xcomment, ', ') Within Group (Order By deg.degree_type ASC) As Non_NUdeg_Comments
+From degrees deg
+Left Join institution inst
+      On deg.institution_code = inst.institution_code
+Left Join tms_degree_level tdl
+      On deg.degree_level_code = tdl.degree_level_code
+Left Join tms_campus camp
+      On deg.campus_code = camp.campus_code
+Where NOT deg.school_code Like 'BUS'
+AND NOT deg.school_code Like 'KSM'
+And NOT deg.institution_code Like '31173'
+Group By deg.id_number
+),
+
+Ethnicity As(
+Select e.id_number
+     , e.ethnic_code
+     , eth.short_desc As Ethnicity
+from entity e
+Left Join tms_race eth
+     On e.ethnic_code = eth.ethnic_code
+),
+
+KSM_children_alums as (
+SELECT chi.id_number
+       ,count(chi.child_id_number) KSM_Child_Count
+From children chi
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+      On deg.id_number = chi.child_id_number
+Group By chi.id_number
+) 
+,
+
+KSM_spouses as (
+Select rel.id_number
+       ,count(rel.spouse_id_number) KSM_Spouse_Count
+From rpt_pbh634.v_entity_relationships_summary rel
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+      On deg.id_number = rel.spouse_id_number
+Group By rel.id_number
+)
+,
+
+counts_of_NonNuc_Rel as (
+SELECT rel.id_number
+       ,count(rel.relation_status_code) KSM_NonNuc_Rel_Count
+From relationship rel
+Inner Join tms_relationships tmsr
+      On rel.relation_type_code = tmsr.relation_type_code
+Inner Join entity e
+      On rel.id_number = e.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+      On rel.relation_id_number = deg.id_number
+Where rel.relation_status_code = 'A'
+And rel.relation_type_code In ('AU', 'CC', 'CO', 'GC', 'GG', 'GP', 'NN')
+Group By rel.id_number
+) 
+,
+
+counts_of_Nuc_Rel as (
+SELECT rel.id_number
+       ,count(rel.relation_status_code) KSM_Nuc_Rel_Count
+From relationship rel
+Inner Join tms_relationships tmsr
+      On rel.relation_type_code = tmsr.relation_type_code
+Inner Join entity e
+      On rel.id_number = e.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+      On rel.relation_id_number = deg.id_number
+Where rel.relation_status_code = 'A'
+And rel.relation_type_code In ('CL', 'PN', 'PL', 'CP', 'DD', 'DP', 'GU', 'HS', 'PC', 'PL', 'PP', 'PS', 'QQ', 'SL', 'SP', 'SS', 'ST', 'WA', 'WW', 'ZZ')
+Group By rel.id_number
+)
+,
+
+counts_of_Acq_Rel as (
+SELECT rel.id_number
+       ,count(rel.relation_status_code) KSM_Acq_Rel_Count
+From relationship rel
+Inner Join tms_relationships tmsr
+      On rel.relation_type_code = tmsr.relation_type_code
+Inner Join entity e
+      On rel.id_number = e.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+      On rel.relation_id_number = deg.id_number
+Where rel.relation_status_code = 'A'
+And rel.relation_type_code In ('BA', 'CM', 'CT', 'FR', 'ME', 'MN', 'RM', 'OO')
+Group By rel.id_number
+)
+,
+
+counts_of_InPer_Events as (
+SELECT id_number
+       ,count(event_id) KSM_Inper_Event_Count
+From rpt_ssh5552.v_datamart_events
+Where ksm_event = 'Y'
+And event_type_desc In ('Alumni Travel', 'Breakfast', 'Brunch', 'Campaign', 'Charity Auction', 'Cocktail Reception', 'Commencement', 'Community Service', 'Dinner', 'Founders Day', 'Golf Tournament', 'Homecoming Weekend', 'Investiture', 'Lab and Campus Tours', 'Launches and Dedications', 'Lecture', 'Luncheon', 'Meeting', 'Panel', 'Performance', 'Philanthropic', 'Post-Game Gathering', 'Pre-Game Gathering', 'Professional Development', 'Reception', 'Recruitment', 'Reunion', 'Social Gathering', 'Speaker', 'Tailgate Party', 'Third Party Hosted Event')
+And start_fy_calc In ('2023', '2022', '2021', '2020', '2019', '2018')
+Group By Id_Number
+)
+,
+
+counts_of_Virtual_Events as (
+SELECT id_number
+       ,count(event_id) KSM_Virt_Event_Count
+From rpt_ssh5552.v_datamart_events
+Where ksm_event = 'Y'
+And event_type_desc In ('Hybrid', 'Online Event')
+And start_fy_calc In ('2023', '2022', '2021', '2020', '2019', '2018')
+Group By Id_Number
+)
+,
+
+count_AlumniClub_Exec_Roles as (
+SELECT comm.id_number
+       ,count(comm.committee_role_code) AlumniClub_Exec_Roles
+From committee comm
+Inner Join tms_committee_table tmsc
+      On comm.committee_code = tmsc.committee_code
+Where tmsc.short_desc like '%Kellogg Alumni Club%'
+And comm.committee_status_code = 'C'
+And comm.committee_role_code In ('BA', 'DIR', 'LDM', 'TA', 'TL', 'TN', 'TC', 'P', 'PE', 'I', 'C', 'CC', 'V', 'S', 'T', 'E', 'RGD', 'DAL', 'R', 'LIS', 'CL')
+Group By comm.Id_Number
+)
+,
+
+count_AlumniClub_Member_Roles as (
+SELECT comm.id_number
+       ,count(comm.committee_role_code) AlumniClub_Member_Roles
+From committee comm
+Inner Join tms_committee_table tmsc
+      On comm.committee_code = tmsc.committee_code
+Where tmsc.short_desc like '%Kellogg Alumni Club%'
+And comm.committee_status_code = 'C'
+And comm.committee_role_code In ('M', 'F', 'H', 'PM')
+Group By comm.Id_Number
+)
+,
+
+pros As (
+Select pros.id_number
+     , pros.prospect_id
+     , pros.pref_mail_name
+     , pros.giving_affiliation
+     , pros.prospect_manager
+     , pros.evaluation_rating
+     , rpt_pbh634.ksm_pkg_tmp.get_number_from_dollar(pros.evaluation_rating) As Eval_Rating_Dollar
+     , pros.evaluation_date
+     , rpt_pbh634.ksm_pkg_tmp.get_number_from_dollar(pros.officer_rating) As Officer_Rating_Dollar
+     , pros.officer_rating
+     , pros.prospect_stage
+From nu_prs_trp_prospect pros
+)
+,
+
+Interests As (
+Select int.id_number
+     , listagg(int.interest_code, ', ') Within Group (Order By int.interest_code ASC) As Interest_Code
+     , listagg(tint.short_desc, ', ') Within Group (Order By int.interest_code ASC) As Interests
+     , listagg(int.comment1, ', ') Within Group (Order By int.interest_code ASC) As Interest_Comment
+     , listagg(ind.industry_group, ', ') Within Group (Order By int.interest_code ASC) As Industries
+From interest int
+Inner Join tms_interest tint
+      On int.interest_code = tint.interest_code
+Inner Join RPT_SSH5552.v_industry_groups ind
+      On int.interest_code = ind.fld_of_work_code
+Group By int.id_number
+)
+,
+
+ss_act As (
+Select Distinct
+       a.id_number
+     , listagg(a.activity_code, ', ') Within Group (Order By a.start_dt) As SS_Activities
+From Activity a
+Inner Join tms_activity_table tmsa
+      On tmsa.activity_code = a.activity_code
+Where a.activity_code In ('KSMR', 'KSP', 'KAGT', 'KCR', 'KAV')
+Group By a.id_number
+-- KSM Student Recommender, KSM Speaker1, KSM Guided Trek1, KSM Corp Recruiter1, KSM Admission Volunteer1
+-- Might not be active, so check the dates
+-- Supporters
+)
+,
+
+ss_comm As (
+Select Distinct
+       co.id_number
+     , listagg(co.committee_code, ', ') Within Group (Order By co.start_dt) As SS_Committees
+From committee co
+Inner Join tms_committee_table tmsc
+      On co.committee_code = tmsc.committee_code
+Inner Join tms_committee_status tmsh
+      On co.committee_status_code = tmsh.committee_status_code
+Left Join tms_committee_role tmsr
+      On co.committee_role_code = tmsr.committee_role_code
+Where co.committee_code In ('KAAC', 'KOCCI', 'KRAC', 'KALC', 'KACMP')
+Group By co.id_number
+-- Additional engagament activities
+-- KSM Admissions Caller, Kellogg OnCampus Interviewer, KSM Recruiter Advisory Council, KSM Admissions Leadership Council, Kellogg Alumni Mentorship Program
+-- Think about Mentorship, as we can't tell the diff between Mentors and Mentees
+-- Supporters
+)
+
+Select e.id_number
+--     , e.pref_mail_name
+--     , e.record_status_code
+--     , e.gender_code
+--     , eth.Ethnicity
+--     , hh.HOUSEHOLD_ID
+--     , hh.HOUSEHOLD_RPT_NAME
+     , deg.degrees_concat
+     , deg.first_ksm_year
+     , deg.program
+--     , emp.job_status_code
+--     , emp.primary_emp_ind
+--     , emp.employer_id_number
+--     , emp.pref_mail_name
+--     , emp.employer_name1
+--     , emp.employer_name2
+--     , emp.job_title
+--     , emp.fld_of_work_code
+--     , emp.Fld_of_work
+--     , emp.fld_of_spec_code1
+--     , emp.Fld_of_spec
+--     , emp.start_dt
+--     , emp.xcomment
+--     , nkd.NonKSM_NUdeg_School
+--     , nkd.NonKSM_NUdeg_School_Name
+--     , nkd.NonKSM_NUdeg_Degree_Type
+--     , nkd.NonKSM_NUdeg_Degree_Level_Code
+--     , nkd.NonKSM_NUdeg_Degree_Level
+--     , nkd.NonKSM_NUdeg_School_Code
+--    , nkd.NonKSM_NUdeg_Campus_Code
+--     , nkd.NonKSM_NUdeg_Campus
+--     , nkd.NonKSM_NUdeg_Degree_Year
+--     , nkd.NonKSM_NUdeg_Fin_Aid
+--     , nkd.NonKSM_NUdeg_Non_Grad
+--     , nkd.NonKSM_NUdeg_Date_Mod
+--     , nkd.NonKSM_NUdeg_Operator_Name
+--     , nkd.NonKSM_NUdeg_Comments
+--     , noNU.Non_NUdeg_School
+--     , noNU.Non_NUdeg_School_Name
+--     , noNU.Non_NUdeg_Degree_Type
+--     , noNU.Non_NUdeg_Degree_Level_Code
+--     , noNU.Non_NUdeg_Degree_Level
+--     , noNU.Non_NUdeg_School_Code
+--     , noNU.Non_NUdeg_Campus_Code
+--     , noNU.Non_NUdeg_Campus
+--     , noNU.Non_NUdeg_Degree_Year
+--     , noNU.Non_NUdeg_Fin_Aid
+--     , noNU.Non_NUdeg_Non_Grad
+--     , noNU.Non_NUdeg_Date_Mod
+--     , noNU.Non_NUdeg_Operator_Name
+--     , noNU.Non_NUdeg_Comments
+--     , pros.giving_affiliation
+--     , pros.prospect_manager
+--     , pros.evaluation_rating
+--     , pros.Eval_Rating_Dollar
+--     , pros.evaluation_date
+--     , pros.officer_rating
+--     , pros.Officer_Rating_Dollar
+--     , pros.prospect_stage
+     , giv.ngc_lifetime
+--     , Case
+--         When giv.ngc_lifetime >= 1000000 Then '3'
+--         When giv.ngc_lifetime >= 500000 Then '2'
+--         When giv.ngc_lifetime >= 250000 Then '1'
+--         When giv.ngc_lifetime >= 50000 And giv.ngc_lifetime < 250000 Then '.5'
+--         ELSE '0'
+--       End As ngc_lifetime_count -- Should there be a level where it drops off? I.E. $3M donor probably won't be making admissions calls
+--     , giv.FY_GIVING_FIRST_YR
+--     , giv.FY_GIVING_LAST_YR
+--     , giv.FY_GIVING_YR_COUNT
+--     , giv.LAST_GIFT_DATE
+--     , giv.LAST_GIFT_TYPE
+--     , giv.LAST_GIFT_RECOGNITION_CREDIT
+--     , giv.AF_STATUS
+--     , giv.AF_GIVING_SEGMENT
+     , giv.KLC_CURRENT
+     , giv.KLC_LYBUNT
+--     , Case
+--         When giv.KLC_CURRENT Is Not Null Or giv.KLC_LYBUNT Is Not Null
+--         THEN '1'
+--       End As KLC_count
+--     , giv.ngc_CFY
+--     , giv.ngc_PFY1 As ngc_Last_Year
+--     , giv.ngc_PFY2 As ngc_Two_Years_Ago
+--     , giv.ngc_PFY3 As ngc_Three_Years_Ago
+--     , giv.ngc_PFY4 As ngc_Four_Years_Ago
+--     , giv.ngc_PFY5 As ngc_Five_Years_Ago
+     , spea.KSM_Speaker_Count
+--     , Case
+--         When spea.KSM_Speaker_Count Is Not Null THEN '1'
+--       End As Speaker_Count
+     , EH.KSM_Event_Host_Count
+--     , Case
+--         When EH.KSM_Event_Host_Count Is Not Null THEN '1'
+--       End As Event_Host_Count
+     , CorRec.KSM_KCorpRec_Count
+--     , Case
+--         When CorRec.KSM_KCorpRec_Count Is Not Null THEN '1'
+--       End As Corp_Rec_Count
+     , SACount.KSM_Stu_Act_Count
+--     , Case
+--         When SACount.KSM_Stu_Act_Count Is Not Null THEN '1'
+--       End As Student_Act_Count
+     , Kad.KSM_KAd_Caller_Count
+--     , Case
+--         When Kad.KSM_KAd_Caller_Count Is Not Null THEN '1'
+--       End As Adm_Caller_Count
+     , intv.KSM_Interviewer_Count
+--     , Case
+--         When intv.KSM_Interviewer_Count Is Not Null THEN '1'
+--       End As Interview_Count
+     , spou.KSM_Spouse_Count
+--     , Case
+--         When spou.KSM_Spouse_Count Is Not Null THEN '1'
+--       End As Spouse_Count     
+     , chi.KSM_child_count
+--     , Case
+--         When chi.KSM_Child_Count Is Not Null THEN '1'
+--       End As Child_Count
+     , Nuc_rel.KSM_Nuc_Rel_Count
+--     , Case
+--         When Nuc_rel.KSM_Nuc_Rel_Count Is Not Null THEN '1'
+--       End As Nuclear_fam_Count
+     , NonNuc.KSM_NonNuc_Rel_Count
+--     , Case
+--         When Nuc_rel.KSM_Nuc_Rel_Count Is Not Null THEN '.5'
+--       End As Non_Nuc_fam_Count
+     , AcqRel.KSM_Acq_Rel_Count
+--     , Case
+--         When AcqRel.KSM_Acq_Rel_Count Is Not Null THEN '.25'
+--       End As Acquaintance_Count
+     , Evinper.KSM_Inper_Event_Count
+--     , Case
+--         When Evinper.KSM_Inper_Event_Count Is Not Null THEN '1'
+--       End As InPerson_Event_Count
+     , Evvirt.KSM_Virt_Event_Count
+--     , Case
+--         When Evvirt.KSM_Virt_Event_Count Is Not Null THEN '.25'
+--       End As Online_Event_Count
+     , club.AlumniClub_Exec_Roles
+--     , Case
+--         When club.AlumniClub_Exec_Roles Is Not Null THEN '1'
+--       End As ClubExec_Count
+     , mem.AlumniClub_Member_Roles
+--     , Case
+--         When mem.AlumniClub_Member_Roles Is Not Null THEN '.25'
+--       End As ClubMember_Count
+--     , KSM_Prop_Act.prospect_id
+--     , KSM_Prop_Act.Proposal_Prospect
+--     , KSM_Prop_Act.Proposal_ID
+--     , KSM_Prop_Act.KSM_Proposal_Ind
+--     , KSM_Prop_Act.Proposal_Type
+--     , KSM_Prop_Act.Proposal_Prob
+--     , KSM_Prop_Act.Proposal_Status
+--     , KSM_Prop_Act.Proposal_Active
+--     , KSM_Prop_Act.Proposal_Start_Dt
+--     , KSM_Prop_Act.Proposal_Ask_Dt
+--     , KSM_Prop_Act.Proposal_Close_Dt
+--     , KSM_Prop_Act.Proposal_Title
+--     , KSM_Prop_Act.Proposal_Type
+--     , KSM_Prop_Act.Proposal_Orig_Ask_Amt
+--     , KSM_Prop_Act.Proposal_Ant_Amt
+--     , KSM_Prop_Act.Proposal_KSM_Ask_Amt
+--     , KSM_Prop_Act.Proposal_KSM_Ant_Amt
+--     , KSM_Prop_Act.Proposal_Manager
+--     , KSM_Prop_Act.KSM_Proposal_Mgr
+--     , KSM_Prop_Act.KSM_Proposal_Team
+--     , KSM_Prop_Act.Proposal_Assist
+--     , PSC.ClosedProp_Withdrawn
+--     , PSC.ClosedProp_Declined
+     , PSC.ClosedProp_Funded
+--     , Case
+--         When PSC.ClosedProp_Funded Is Not Null THEN '1'
+--       End As FundedProp_Count
+--     , PSC.ClosedProp_Anticipated
+--     , PSC.ClosedProp_Decision_Deferred
+--     , PSC.ClosedProp_Def_by_Officer
+--     , PSC.ClosedProp_Def_by_Prospect
+--     , PSC.ClosedProp_Pend_Donor_Resp
+--     , PSC.ClosedProp_Submitted
+--     , PSC.ClosedProp_Approved
+--     , intr.Industries
+--     , sum((coalesce(giv.ngc_lifetime_count ,0)) + (coalesce(giv.KLC_count ,0)) + (coalesce(spea.Speaker_Count ,0)) + (coalesce(eh.Event_Host_Count ,0)) + (coalesce(correc.Corp_Rec_Count ,0)) + 
+--        (coalesce(sa.Student_Act_Count ,0)) + (coalesce(kad.Adm_Caller_Count ,0)) + (coalesce(intv.Interview_Count ,0)) + (coalesce(spou.Spouse_Count ,0)) + (coalesce(chi.Child_Count ,0)) + 
+--        (coalesce(nuc_rel.Nuclear_fam_Count ,0)) + (coalesce(nonnuc.Non_Nuc_fam_Count ,0)) + (coalesce(acqrel.Acquaintance_Count ,0)) + 
+--        (coalesce(Evinper.InPerson_Event_Count ,0)) + (coalesce(Evvirt.Online_Event_Count ,0)) + (coalesce(club.ClubExec_Count ,0)) + (coalesce(mem.ClubMember_Count ,0)) + 
+--        (coalesce(PSC.FundedProp_Count ,0))) As Score
+--      , ac.SS_Activities
+--      , comm.SS_Committees
+      , Case When ac.SS_Activities Is Not Null OR comm.SS_Committees Is Not Null
+             THEN 'Y' End As Student_Supporter
+From rpt_pbh634.v_entity_ksm_degrees deg
+Inner Join entity e
+     On e.id_number = deg.id_number
+Inner Join rpt_pbh634.v_entity_ksm_households hh
+     On e.id_number = hh.id_number
+Left Join employ emp
+     On e.id_number = emp.id_number
+Left Join rpt_pbh634.v_ksm_giving_summary giv -- join to households for household data
+     On giv.id_number = deg.id_number
+Left Join pros
+     On pros.id_number = deg.id_number
+Left Join KSM_Prop_Act
+     On pros.prospect_id = KSM_Prop_Act.prospect_Id
+Left Join Closed_Prop_Status_Counts PSC
+     On pros.prospect_id = PSC.prospect_Id
+Left Join nonKSMdegrees nkd
+     On e.id_number = nkd.id_number
+Left Join nonNUdegrees noNU
+     On noNU.id_number = e.id_number
+Left Join Ethnicity eth
+     On e.id_number = eth.id_number
+Left Join count_of_speakers spea
+     On e.id_number = spea.id_number
+Left Join count_of_Event_Host EH
+     On e.id_number = EH.id_number
+Left Join count_of_KCorpRec CorRec
+     On e.id_number = CorRec.id_number
+Left Join count_of_KAd_Caller Kad
+     On e.id_number = Kad.id_number
+Left Join count_of_KStuAct SACount
+     On e.id_number = SACount.id_number
+Left Join counts_of_Nuc_Rel Nuc_rel
+     On e.id_number = Nuc_rel.id_number
+Left Join counts_of_NonNuc_Rel NonNuc
+     On e.id_number = NonNuc.id_number
+Left Join counts_of_Acq_Rel AcqRel
+     On e.id_number = AcqRel.id_number
+Left Join counts_of_Inper_Events Evinper
+     On e.id_number = Evinper.id_number
+Left Join counts_of_Virtual_Events Evvirt
+     On e.id_number = Evvirt.id_number
+Left Join count_AlumniClub_Exec_Roles club
+     On e.id_number = club.id_number
+Left Join count_AlumniClub_Member_Roles mem
+     On e.id_number = mem.id_number
+Left Join count_of_K_Interviewers intv
+     On e.id_number = intv.id_number
+Left Join Interests intr
+     On e.id_number = intr.id_number
+Left Join KSM_children_alums chi
+     On e.id_number = chi.id_number
+Left Join KSM_spouses spou
+     On e.id_number = spou.id_number
+Left Join ss_act ac
+      On e.id_number = ac.id_number
+Left Join ss_comm comm
+      On e.id_number = comm.id_number
+Where not deg.program like 'UNK'
+And not deg.program like '%NONGRD'
+And e.record_status_code In ('A', 'L')
