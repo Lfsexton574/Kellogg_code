@@ -1,0 +1,196 @@
+With KFNYear As (
+Select comm.id_number
+     , comm.committee_code
+     , comm.committee_status_code
+     , comm.committee_role_code
+     , tmsc.short_desc As Committee_Role
+     , comm.committee_title
+     , comm.start_dt
+--     , substr (comm.start_dt, 1,4) As Year -- Need to anchor to FY, not CY
+From Committee comm
+Inner Join tms_committee_role tmsc
+      On comm.committee_role_code = tmsc.committee_role_code
+Where comm.committee_code = 'KFN'
+And comm.committee_status_code = 'C'
+And comm.committee_role_code <> 'EF'
+)
+,
+
+KFN_subs As (
+Select id_number
+From
+KFN_DEC_FY24 -- Need to update with current list of KFN members in AM
+)
+,
+
+KFN_merge As (
+Select id_number
+From KFNYear
+Union
+Select id_number
+From KFN_subs
+)
+,
+
+interest_codes As (
+Select int.id_number
+     , listagg(int.interest_code, ', ') Within Group (Order By int.interest_code ASC) as interest_code
+     , listagg(tint.short_desc, ', ') Within Group (Order By int.interest_code ASC) as short_desc
+from interest int
+Inner Join tms_interest tint
+      On tint.interest_code = int.interest_code
+Where int.interest_code In ('L43', 'L11', 'L69', 'L70')
+Group by int.id_number
+),
+
+KSM_ngc AS (
+Select distinct id_number
+     , ngc_lifetime
+     , ngc_cfy As ngc_FY24
+     , ngc_pfy1 As ngc_FY23
+     , ngc_pfy2 As ngc_FY22
+     , ngc_pfy3 As ngc_FY21
+     , ngc_pfy4 As ngc_FY20
+     , ngc_pfy5 As ngc_FY19
+From RPT_PBH634.V_KSM_GIVING_SUMMARY
+)
+,
+
+pref_email As (
+Select em.id_number
+     , em.email_address
+     , em.preferred_ind
+     , shc.NO_EMAIL_IND
+     , shc.No_contact
+From Email em
+Left Join rpt_pbh634.v_entity_special_handling SHC
+     on em.id_number = shc.id_number
+Where em.email_status_code = 'A'
+And em.preferred_ind = 'Y'
+And shc.NO_EMAIL_IND is NULL
+And shc.No_contact is NULL
+),
+
+GAB As (
+    Select id_number
+     , short_desc
+     , status
+     , role
+     , start_dt
+     From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
+),
+
+Trustee As (
+    Select tru.id_number
+     , tru.short_desc
+     , tru.status
+     , tru.role
+     , tru.start_dt
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) tru
+),
+
+Trustee_Sp As (
+    Select trusp.Spouse_id_number As Trustee_Spouse
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) trusp
+),
+
+asia As (
+Select comm.id_number
+     , comm.committee_status_code
+     , ctab.short_desc As Committee
+From committee comm
+Inner Join tms_committee_table ctab
+      On comm.committee_code = ctab.committee_code
+Where comm.committee_code = 'KEBA'
+And comm.committee_status_code = 'C'
+),
+
+facstaff As ( -- Based on NU_RPT_PKG_SCHOOL_TRANSACTION
+Select Distinct af.id_number
+              , tms_affil.short_desc As KSM_Faculty_or_Staff
+From Affiliation af
+Inner Join tms_affiliation_level tms_affil
+      On af.affil_level_code = tms_affil.affil_level_code
+Where af.affil_level_code In ('ES', 'EF') -- Staff, Faculty
+And af.affil_status_code = 'C'
+And af.affil_code = 'KM'
+)
+
+Select Distinct
+       kfn.id_number
+     , e.pref_mail_name
+     , deg.DEGREES_CONCAT
+     , deg.PROGRAM
+     , deg.FIRST_KSM_YEAR
+     , KFNYear.committee_code
+     , KFNYear.Committee_Role
+     , KFNYear.committee_title
+     , KSM_ngc.ngc_lifetime
+     , KSM_ngc.ngc_FY24
+     , KSM_ngc.ngc_FY23
+     , KSM_ngc.ngc_FY22
+     , KSM_ngc.ngc_FY21
+     , KSM_ngc.ngc_FY20
+     , KSM_ngc.ngc_FY19
+     , p.evaluation_rating
+     , p.evaluation_date
+     , p.officer_rating
+     , p.PROSPECT_MANAGER
+     , assn.LGOs
+     , p.employer_name1
+     , p.employer_name2
+     , p.business_title
+     , p.pref_city
+     , p.pref_state
+     , p.preferred_country
+     , klc.*
+--     , klc.KLC_Member_FY24
+--     , klc.KLC_Member_FY23
+--     , klc.KLC_Member_FY22
+     , inco.interest_code
+     , inco.short_desc
+     , pe.email_address
+     , pe.preferred_ind
+     , pe.NO_EMAIL_IND
+     , pe.No_contact
+     , gab.short_desc AS GAB_Desc
+     , gab.status AS GAB_Status
+     , Trustee.id_number AS Trustee_ID
+     , Trustee.role As Trustee_Role
+     , Trustee_Sp.Trustee_Spouse
+     , asia.committee_status_code As Asia_Exec_Board_Status
+     , asia.Committee As Asia_Exec_Board
+     , fs.KSM_Faculty_or_Staff
+     , sh.no_contact
+     , sh.no_email_ind
+From KFN_merge kfn
+Inner Join entity e
+     On kfn.id_number = e.id_number
+Left Join KSM_ngc
+     On kfn.id_number = KSM_ngc.id_number
+Left Join rpt_pbh634.v_assignment_summary assn
+     On kfn.id_number = assn.id_number
+Left Join NU_PRS_TRP_PROSPECT p
+     On kfn.id_number = p.id_number
+Left Join interest_codes inco
+     On kfn.id_number = inco.id_number
+Left Join KLC_FY24 klc
+     On kfn.id_number = klc.id_number
+Left Join rpt_pbh634.v_entity_ksm_degrees deg
+      On kfn.id_number = deg.id_number
+Inner Join pref_email pe
+     On kfn.id_number = pe.id_number
+Left Join facstaff fs
+     On kfn.id_number = fs.id_number
+Left Join Asia
+     On kfn.id_number = asia.id_number
+Left Join GAB
+     On kfn.id_number = GAB.id_number
+Left Join trustee
+     On kfn.id_number = trustee.id_number
+Left Join Trustee_Sp
+     On kfn.id_number = Trustee_Sp.Trustee_Spouse
+Left Join RPT_PBH634.v_entity_special_handling sh
+     On kfn.id_number = sh.id_number
+Left Join KFNYear
+     On kfn.id_number = KFNYear.id_number
