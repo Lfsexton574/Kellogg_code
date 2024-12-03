@@ -1,3 +1,4 @@
+-- Need to update KLC_FY24 to pull in correct donation years for KLC
 With KFNYear As (
 Select comm.id_number
      , comm.committee_code
