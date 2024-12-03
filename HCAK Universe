@@ -30,7 +30,7 @@ Select id_number
 
 HCAK As (
 Select *
-From HCAK_Oct_24 --  Replace with updated Alumni Magnet list each month
+From HCAK_Dec_24 --  Replace with updated Alumni Magnet list each month
 -- Includes ID and Membership Level
 )
 ,
@@ -64,15 +64,15 @@ pref_email As (
 Select em.id_number
      , em.email_address
      , em.preferred_ind
-     , shc.NO_EMAIL_IND
-     , shc.No_contact
+--     , shc.NO_EMAIL_IND
+--     , shc.No_contact
 From Email em
-Left Join rpt_pbh634.v_entity_special_handling SHC
-     on em.id_number = shc.id_number
+--Left Join rpt_pbh634.v_entity_special_handling SHC
+--     on em.id_number = shc.id_number
 Where em.email_status_code = 'A'
 And em.preferred_ind = 'Y'
-And shc.NO_EMAIL_IND is NULL
-And shc.No_contact is NULL
+--And shc.NO_EMAIL_IND is NULL
+--And shc.No_contact is NULL
 ),
 
 GAB As (
@@ -153,33 +153,23 @@ Select idm.id_number
      , e.pref_mail_name
      , e.institutional_suffix
      , e.record_status_code
+     , e.last_name
      , deg.degrees_concat
      , deg.first_ksm_year
      , deg.PROGRAM
-     ,
-     Case
-        When hcak.Membership_Level = '1'
-          Then 'Paid'
-        When hcak.Membership_Level = '2'
-          Then 'Free'
-        When hcak.id_number Is Not Null
-          Then 'In Directory'
-          Else ''
-        End
-      As HCAK
---     , hcak.membership
+     , hcak.HCAK_Membership
      , hlth.Health_Interest
      , hemp.employer_name As Healthcare_Employer
      , hemp.job_title As Healthcare_Job
      , hemp.fld_of_work_code
      , hemp.fld_of_work
      , hemp.fld_of_spec_code1
-     , hemp.fld_of_spec     
+     , hemp.fld_of_spec
      , emp.employer_name As Prim_Employer
      , emp.job_title As Prim_Job_Title
      , pe.preferred_ind
-     , pe.NO_EMAIL_IND
-     , pe.No_contact
+--     , pe.NO_EMAIL_IND
+--     , pe.No_contact
      , gab.short_desc AS GAB_Desc
      , gab.status AS GAB_Status
      , Trustee.id_number AS Trustee_ID
