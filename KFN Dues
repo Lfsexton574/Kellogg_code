@@ -138,7 +138,7 @@ Select Distinct
      , p.officer_rating
      , p.PROSPECT_MANAGER
      , assn.LGOs
-     , p.employer_name1
+     , p.employer_name1 -- Pulled from TRS_Prospect so will only populate when Prospect record exists -- Update to Employment/Bus Addy
      , p.employer_name2
      , p.business_title
      , p.pref_city
