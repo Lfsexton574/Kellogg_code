@@ -149,7 +149,7 @@ Select id_number
   )
 
 
-Select idm.id_number
+Select Distinct idm.id_number
      , e.pref_mail_name
      , e.institutional_suffix
      , e.record_status_code
