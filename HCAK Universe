@@ -29,8 +29,9 @@ Select id_number
 ,
 
 HCAK As (
-Select *
-From HCAK_Dec_24 --  Replace with updated Alumni Magnet list each month
+Select id_number
+     , membership_level As HCAK_Membership
+From HCAK_Jan25 --  Replace with updated Alumni Magnet list each month
 -- Includes ID and Membership Level
 )
 ,
@@ -147,7 +148,37 @@ Select id_number
   Where employment.primary_emp_ind = 'Y'
   And employment.job_status_code = 'C'
   )
+,
 
+prefaddress As (
+Select a.id_number
+     , tms_addr_status.short_desc
+       As address_status
+     , tms_address_type.short_desc
+       As address_type
+     , a.addr_pref_ind
+     , a.company_name_1
+     , a.company_name_2
+     , a.care_of
+     , a.street1
+     , a.street2
+     , a.street3
+     , a.foreign_cityzip
+     , a.city
+     , a.state_code
+     , a.zipcode
+     , tms_country.short_desc
+       As country
+From address a
+Inner Join tms_addr_status
+     On tms_addr_status.addr_status_code = a.addr_status_code
+Left Join tms_address_type
+     On tms_address_type.addr_type_code = a.addr_type_code
+Left Join tms_country
+     On tms_country.country_code = a.country_code
+Where a.addr_pref_ind = 'Y'
+And a.addr_status_code In ('A','K')
+)
 
 Select Distinct idm.id_number
      , e.pref_mail_name
@@ -180,6 +211,13 @@ Select Distinct idm.id_number
      , fs.KSM_Faculty_or_Staff
      , sh.no_contact
      , sh.no_email_ind
+     , pa.address_status
+     , pa.address_type
+     , pa.addr_pref_ind
+     , pa.foreign_cityzip
+     , pa.city
+     , pa.state_code
+     , pa.country
 From id_merge idm
 Inner Join entity e
      On e.id_number = idm.id_number
@@ -207,4 +245,6 @@ Left Join Trustee_Sp
      On Trustee_Sp.Trustee_Spouse = idm.id_number
 Left Join RPT_PBH634.v_entity_special_handling sh
      On sh.id_number = idm.id_number
+Left Join PrefAddress pa
+     On idm.id_number = pa.id_number
 Where e.record_status_code = 'A'
