@@ -30,8 +30,8 @@ Select id_number
 
 HCAK As (
 Select id_number
-     , membership_level As HCAK_Membership
-From HCAK_Jan25 --  Replace with updated Alumni Magnet list each month
+     , HCAK_Membership
+From HCAK_Mar25 --  Replace with updated Alumni Magnet list each month
 -- Includes ID and Membership Level
 )
 ,
