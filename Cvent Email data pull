@@ -2,6 +2,7 @@ With pref_email As (
 Select id_number
      , email_address
      , preferred_ind
+     , date_added
 From email
 Where email_status_code = 'A'
 And preferred_ind = 'Y'
@@ -10,6 +11,7 @@ And preferred_ind = 'Y'
 non_pref_email As (
 Select id_number
      , listagg(email_address, ', ') Within Group (Order By email_address ASC) as active_non_pref_emails
+     , listagg(date_added, ', ') Within Group (Order By email_address ASC) as act_nonpref_Added
 From email
 Where email_status_code = 'A'
 And preferred_ind = 'N'
@@ -20,6 +22,7 @@ Group by id_number
 inact_email As (
 Select id_number
      , listagg(email_address, ', ') Within Group (Order By email_address ASC) as inactive_emails
+     , listagg(date_added, ', ') Within Group (Order By email_address ASC) as inact_nonpref_Added
 From email
 Where email_status_code = 'I'
 Group by id_number
@@ -33,9 +36,12 @@ Select cve.id_number
      , e.last_name
      , e.record_status_code
      , pe.email_address As pref_email
+     , pe.date_added
      , npe.active_non_pref_emails
+     , npe.act_nonpref_Added
      , ie.inactive_emails
-From CVENT_MARCHFY23 cve --temp table containing all current CATracks IDs in Cvent--
+     , ie.inact_nonpref_Added
+From CVENT_MARFY25 cve
 Inner Join entity e
      On e.id_number = cve.id_number
 Left Join pref_email pe
