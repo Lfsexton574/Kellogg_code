@@ -1,0 +1,130 @@
+-- Must remove No Contact/No Email from list, as query with SHC in pref_email sub-query takes forever to run/doesn't complete
+
+With employ as (
+Select id_number
+       , -- If there's an employer ID filled in, use the entity name
+   Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      -- Otherwise use the write-in field
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+ --      , employer_name1
+       , job_title
+       , employment.fld_of_work_code
+       , employment.job_status_code
+       , fow.short_desc As fld_of_work
+       , employment.fld_of_spec_code1
+       , fos.short_desc As fld_of_spec
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Left Join tms_fld_of_spec fos
+       On fos.fld_of_spec_code = employment.fld_of_spec_code1
+  Where employment.primary_emp_ind = 'Y'
+  And employment.job_status_code = 'C'
+  And (employment.fld_of_work_code = 'L140'
+  Or employment.fld_of_spec_code1 In ('357', 'K07', 'S25', 'S28'))
+  )
+,
+
+PEVCInt As (
+Select int.id_number
+     , listagg(int.interest_code, ', ') Within Group (Order By int.interest_code ASC) As Interest_Code
+     , listagg(tint.short_desc, ', ') Within Group (Order By int.interest_code ASC) As PEVC_Interest
+     , listagg(int.comment1, ', ') Within Group (Order By int.interest_code ASC) As Interest_Comment
+From interest int
+Inner Join tms_interest tint
+      On int.interest_code = tint.interest_code
+Where int.interest_code = 'LVC'
+Group By int.id_number
+)
+,
+
+id_merge As (
+Select id_number
+From PEVCInt
+Union
+Select id_number
+From employ
+)
+,
+
+prim_employ as (
+Select id_number
+       , -- If there's an employer ID filled in, use the entity name
+   Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      -- Otherwise use the write-in field
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+--       , employer_name1
+       , job_title
+       , employment.fld_of_work_code
+       , employment.job_status_code
+       , fow.short_desc As fld_of_work
+       , employment.fld_of_spec_code1
+       , fos.short_desc As fld_of_spec
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Left Join tms_fld_of_spec fos
+       On fos.fld_of_spec_code = employment.fld_of_spec_code1
+  Where employment.primary_emp_ind = 'Y'
+  And employment.job_status_code = 'C'
+  )
+,
+
+LinkedIn As (Select distinct ec.id_number
+         , max(ec.start_dt) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) As Max_Date
+         , max (ec.econtact) keep(dense_rank First Order By ec.start_dt Desc, ec.econtact asc) as linkedin_address
+from econtact ec
+where  ec.econtact_status_code = 'A'
+and  ec.econtact_type_code = 'L'
+Group By ec.id_number)
+
+Select Distinct idm.id_number
+     , e.pref_mail_name
+     , e.first_name
+     , e.last_name
+     , e.institutional_suffix
+     , e.record_status_code
+     , deg.degrees_concat
+     , deg.first_ksm_year
+     , deg.PROGRAM
+     , geo.GEO_CODE_PRIMARY_DESC
+     , assn.prospect_manager
+     , pevc.PEVC_Interest
+     , emp.employer_name As PEVC_Employer
+     , emp.job_title As PEVC_Job
+     , emp.fld_of_work_code
+     , emp.fld_of_work
+     , emp.fld_of_spec_code1
+     , emp.fld_of_spec
+     , pemp.employer_name As Prim_Employer
+     , pemp.job_title As Prim_Job_Title
+     , Li.linkedin_address
+From id_merge idm
+Inner Join entity e
+     On e.id_number = idm.id_number
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+     On deg.id_number = idm.id_number
+Inner Join RPT_PBH634.V_GEO_CODE_PRIMARY geo
+     On deg.id_number = geo.id_number
+Left Join employ emp
+     On emp.id_number = idm.id_number
+Left Join prim_employ pemp
+     On pemp.id_number = idm.id_number
+Left Join PEVCInt pevc
+     On pevc.id_number = idm.id_number
+Left Join LinkedIn Li
+     On li.id_number = idm.id_number
+Left Join rpt_pbh634.v_assignment_summary assn
+     On assn.id_number = idm.id_number
+Where geo.GEO_CODE_PRIMARY_DESC = 'New York'
+And e.record_status_code = 'A'
