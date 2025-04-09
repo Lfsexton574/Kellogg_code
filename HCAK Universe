@@ -199,6 +199,7 @@ Select Distinct idm.id_number
      , emp.employer_name As Prim_Employer
      , emp.job_title As Prim_Job_Title
      , pe.preferred_ind
+     , pe.email_address -- remove when sharing to anyone but TA
 --     , pe.NO_EMAIL_IND
 --     , pe.No_contact
      , gab.short_desc AS GAB_Desc
