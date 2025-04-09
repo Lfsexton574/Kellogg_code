@@ -247,4 +247,4 @@ Left Join RPT_PBH634.v_entity_special_handling sh
      On sh.id_number = idm.id_number
 Left Join PrefAddress pa
      On idm.id_number = pa.id_number
-Where e.record_status_code = 'A'
+Where e.record_status_code In ('A', 'L')
