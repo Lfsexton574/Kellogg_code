@@ -1,0 +1,181 @@
+With prim_employ as (
+Select id_number
+       , -- If there's an employer ID filled in, use the entity name
+   Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      -- Otherwise use the write-in field
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+--       , employer_name1
+       , job_title
+       , employment.fld_of_work_code
+       , employment.job_status_code
+       , fow.short_desc As fld_of_work
+       , employment.fld_of_spec_code1
+       , fos.short_desc As fld_of_spec
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Left Join tms_fld_of_spec fos
+       On fos.fld_of_spec_code = employment.fld_of_spec_code1
+  Where employment.primary_emp_ind = 'Y'
+  And employment.job_status_code = 'C'
+)
+,
+
+CR As (
+Select crt.id_number
+--     , crt.contact_type
+     , max(tmsc.short_desc) keep(dense_rank First Order By crt.contact_date Desc) As Contact_Type
+--     , crt.contact_purpose_code
+     , max(tmsp.short_desc) keep(dense_rank First Order By crt.contact_date Desc) As Contact_Purpose
+     , max(crt.contact_date) keep(dense_rank First Order By crt.contact_date Desc) As Contact_Date
+--     , crt.author_id_number
+     , max(e.pref_mail_name) keep(dense_rank First Order By crt.contact_date Desc) As Author
+     , max(crt.description) keep(dense_rank First Order By crt.contact_date Desc) As Contact_Desc
+     , max(dbms_lob.substr(crt.summary, 2000, 1)) keep(dense_rank First Order By crt.contact_date Desc) As Contact_Summary
+From contact_report crt
+Inner join tms_contact_rpt_type tmsc
+      On crt.contact_type = tmsc.contact_type
+Inner Join tms_contact_rpt_purpose tmsp
+      On crt.contact_purpose_code = tmsp.contact_purpose_code
+Inner Join entity e
+      On e.id_number = crt.author_id_number
+Where crt.contact_type In ('E', 'N', 'P', 'V')
+Group By crt.id_number
+)
+,
+
+pref_email As (
+Select em.id_number
+     , em.email_address
+     , em.preferred_ind
+     , shc.NO_EMAIL_IND
+     , shc.No_contact
+From Email em
+Left Join rpt_pbh634.v_entity_special_handling SHC
+     on em.id_number = shc.id_number
+Where em.email_status_code = 'A'
+And em.preferred_ind = 'Y'
+And shc.NO_EMAIL_IND is NULL
+And shc.No_contact is NULL
+)
+,
+
+GAB As (
+    Select id_number
+     , short_desc
+     , status
+     , role
+     , start_dt
+     From table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_gab)
+)
+,
+
+Trustee As (
+    Select tru.id_number
+     , tru.short_desc
+     , tru.status
+     , tru.role
+     , tru.start_dt
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) tru
+)
+,
+
+Trustee_Sp As (
+    Select trusp.Spouse_id_number As Trustee_Spouse
+     from table(rpt_pbh634.ksm_pkg_tmp.tbl_committee_trustee) trusp
+),
+
+asia As (
+Select comm.id_number
+     , comm.committee_status_code
+     , ctab.short_desc As Committee
+From committee comm
+Inner Join tms_committee_table ctab
+      On comm.committee_code = ctab.committee_code
+Where comm.committee_code = 'KEBA'
+And comm.committee_status_code = 'C'
+)
+,
+
+facstaff As ( -- Based on NU_RPT_PKG_SCHOOL_TRANSACTION
+Select Distinct af.id_number
+              , tms_affil.short_desc As KSM_Faculty_or_Staff
+From Affiliation af
+Inner Join tms_affiliation_level tms_affil
+      On af.affil_level_code = tms_affil.affil_level_code
+Where af.affil_level_code In ('ES', 'EF') -- Staff, Faculty
+And af.affil_status_code = 'C'
+And af.affil_code = 'KM'
+)
+
+Select Distinct e.id_number
+     , e.pref_mail_name
+     , e.first_name
+     , e.last_name
+     , e.institutional_suffix
+     , e.record_status_code
+     , e.political_interest_code As First_Gen
+     , deg.degrees_concat
+     , deg.first_ksm_year
+     , deg.PROGRAM
+     , assn.prospect_manager
+     , assn.lgos
+     , pemp.employer_name As Prim_Employer
+     , pemp.job_title As Prim_Job_Title
+     , pemp.fld_of_work
+     , pemp.fld_of_spec
+     , hh.Household_city
+     , hh.Household_state
+     , giv.""NGC_LIFETIME_FULL_REC""
+     , giv.""LAST_GIFT_RECOGNITION_CREDIT""
+     , giv.""LAST_GIFT_DATE""
+     , pe.preferred_ind
+     , pe.email_address
+     , pe.no_contact
+     , pe.NO_EMAIL_IND
+     , gab.short_desc AS GAB_Desc
+     , gab.status AS GAB_Status
+     , Trustee.id_number AS Trustee_ID
+     , Trustee.role As Trustee_Role
+     , Trustee_Sp.Trustee_Spouse
+     , asia.committee_status_code As Asia_Exec_Board_Status
+     , asia.Committee As Asia_Exec_Board
+     , fs.KSM_Faculty_or_Staff
+     , CR.Contact_Type
+     , CR.Contact_Purpose
+     , CR.Contact_Date
+     , CR.Author
+     , CR.Contact_Desc
+     , CR.Contact_Summary
+From entity e
+Inner Join rpt_pbh634.v_entity_ksm_degrees deg
+     On deg.id_number = e.id_number
+Inner Join pref_email pe
+     On pe.id_number = e.id_number
+Left Join prim_employ pemp
+     On pemp.id_number = e.id_number
+Left Join facstaff fs
+     On fs.id_number = e.id_number
+Left Join Asia
+     On asia.id_number = e.id_number
+Left Join GAB
+     On GAB.id_number = e.id_number
+Left Join trustee
+     On trustee.id_number = e.id_number
+Left Join Trustee_Sp
+     On Trustee_Sp.Trustee_Spouse = e.id_number
+Left Join rpt_pbh634.v_ksm_giving_summary giv
+     On giv.id_number = e.id_number
+Left Join rpt_pbh634.v_entity_ksm_households hh
+     On hh.id_number = e.id_number
+Left Join CR
+     On CR.id_number = e.id_number
+Left Join rpt_pbh634.v_assignment_summary assn
+     On assn.id_number = e.id_number
+Where e.record_status_code In ('A', 'L')
+And e.political_interest_code = 'Y'
