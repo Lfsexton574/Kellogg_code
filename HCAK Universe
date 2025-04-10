@@ -182,9 +182,10 @@ And a.addr_status_code In ('A','K')
 
 Select Distinct idm.id_number
      , e.pref_mail_name
+     , e.first_name
+     , e.last_name
      , e.institutional_suffix
      , e.record_status_code
-     , e.last_name
      , deg.degrees_concat
      , deg.first_ksm_year
      , deg.PROGRAM
