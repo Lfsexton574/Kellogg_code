@@ -1,6 +1,6 @@
 -- Must remove No Contact/No Email from list, as query with SHC in pref_email sub-query takes forever to run/doesn't complete
 
-With employ as (
+With pevc_employ as (
 Select id_number
        , -- If there's an employer ID filled in, use the entity name
    Case
@@ -48,7 +48,7 @@ Select id_number
 From PEVCInt
 Union
 Select id_number
-From employ
+From pevc_employ
 )
 ,
 
@@ -111,6 +111,34 @@ Where af.affil_level_code In ('ES', 'EF') -- Staff, Faculty
 And af.affil_status_code = 'C'
 And af.affil_code = 'KM'
 )
+,
+
+employ as (
+Select id_number
+       , -- If there's an employer ID filled in, use the entity name
+   Case
+      When employer_id_number Is Not Null And employer_id_number != ' ' Then (
+        Select pref_mail_name
+        From entity
+        Where id_number = employer_id_number)
+      -- Otherwise use the write-in field
+      Else trim(employer_name1 || ' ' || employer_name2)
+    End As employer_name
+--       , employer_name1
+       , job_title
+       , employment.fld_of_work_code
+       , employment.job_status_code
+       , fow.short_desc As fld_of_work
+       , employment.fld_of_spec_code1
+       , fos.short_desc As fld_of_spec
+  From employment
+  Left Join tms_fld_of_work fow
+       On fow.fld_of_work_code = employment.fld_of_work_code
+  Left Join tms_fld_of_spec fos
+       On fos.fld_of_spec_code = employment.fld_of_spec_code1
+  Where employment.primary_emp_ind = 'Y'
+  And employment.job_status_code = 'C'
+  )
 
 Select idm.id_number
      , e.pref_mail_name
@@ -122,12 +150,14 @@ Select idm.id_number
      , deg.first_ksm_year
      , deg.PROGRAM
      , pevc.PEVC_Interest
-     , emp.employer_name As PEVC_Employer
-     , emp.job_title As PEVC_Job
-     , emp.fld_of_work_code
-     , emp.fld_of_work
-     , emp.fld_of_spec_code1
-     , emp.fld_of_spec
+     , pvemp.employer_name As PEVC_Employer
+     , pvemp.job_title As PEVC_Job
+--     , pvemp.fld_of_work_code
+     , pvemp.fld_of_work
+--     , pvemp.fld_of_spec_code1
+     , pvemp.fld_of_spec
+     , emp.employer_name As Prim_Employer
+     , emp.job_title As Prim_Job_Title
      , pe.preferred_ind
      , pe.email_address
 --     , pe.NO_EMAIL_IND
@@ -149,8 +179,8 @@ Inner Join rpt_pbh634.v_entity_ksm_degrees deg
      On deg.id_number = idm.id_number
 Left Join pref_email pe
      On pe.id_number = idm.id_number
-Left Join employ emp
-     On emp.id_number = idm.id_number
+Left Join pevc_employ pvemp
+     On pvemp.id_number = idm.id_number
 Left Join PEVCInt pevc
      On pevc.id_number = idm.id_number
 Left Join facstaff fs
@@ -165,4 +195,6 @@ Left Join Trustee_Sp
      On Trustee_Sp.Trustee_Spouse = idm.id_number
 Left Join RPT_PBH634.v_entity_special_handling sh
      On sh.id_number = idm.id_number
+Left Join employ emp
+     On emp.id_number = idm.id_number
 Where e.record_status_code = 'A'
