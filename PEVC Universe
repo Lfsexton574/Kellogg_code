@@ -114,6 +114,8 @@ And af.affil_code = 'KM'
 
 Select idm.id_number
      , e.pref_mail_name
+     , e.first_name
+     , e.last_name
      , e.institutional_suffix
      , e.record_status_code
      , deg.degrees_concat
@@ -127,6 +129,7 @@ Select idm.id_number
      , emp.fld_of_spec_code1
      , emp.fld_of_spec
      , pe.preferred_ind
+     , pe.email_address
 --     , pe.NO_EMAIL_IND
 --     , pe.No_contact
      , gab.short_desc AS GAB_Desc
